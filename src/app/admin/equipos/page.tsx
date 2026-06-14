@@ -1,7 +1,12 @@
-import { and, asc, eq, isNull } from "drizzle-orm";
+import Link from "next/link";
+import { and, asc, count, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
-import { categories as categoriesTable, teams as teamsTable } from "@/db/schema";
+import {
+  categories as categoriesTable,
+  teams as teamsTable,
+  students as studentsTable,
+} from "@/db/schema";
 import { getActiveMembership } from "@/lib/tenant";
 import { PageHeader, Card } from "@/components/ui";
 import { CreateCategoryForm, CreateTeamForm } from "./forms";
@@ -20,6 +25,16 @@ export default async function EquiposPage() {
     where: and(eq(teamsTable.schoolId, schoolId), isNull(teamsTable.categoryId)),
     orderBy: [asc(teamsTable.name)],
   });
+
+  // Conteo de alumnos por equipo.
+  const counts = await db
+    .select({ teamId: studentsTable.teamId, value: count() })
+    .from(studentsTable)
+    .where(eq(studentsTable.schoolId, schoolId))
+    .groupBy(studentsTable.teamId);
+  const countByTeam = new Map(
+    counts.map((c) => [c.teamId, c.value] as const)
+  );
 
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
   const isEmpty = categories.length === 0 && looseTeams.length === 0;
@@ -61,7 +76,7 @@ export default async function EquiposPage() {
               </div>
               <DeleteButton action={deleteCategory} id={cat.id} label="Eliminar categoría" />
             </div>
-            <TeamList teams={cat.teams} />
+            <TeamList teams={cat.teams} countByTeam={countByTeam} />
           </Card>
         ))}
 
@@ -70,7 +85,7 @@ export default async function EquiposPage() {
             <h2 className="font-display text-lg font-bold text-ink-soft">
               Sin categoría
             </h2>
-            <TeamList teams={looseTeams} />
+            <TeamList teams={looseTeams} countByTeam={countByTeam} />
           </Card>
         )}
       </div>
@@ -80,8 +95,10 @@ export default async function EquiposPage() {
 
 function TeamList({
   teams,
+  countByTeam,
 }: {
   teams: { id: string; name: string; color: string | null }[];
+  countByTeam: Map<string | null, number>;
 }) {
   if (teams.length === 0) {
     return (
@@ -90,19 +107,27 @@ function TeamList({
   }
   return (
     <ul className="mt-3 flex flex-wrap gap-2">
-      {teams.map((t) => (
-        <li
-          key={t.id}
-          className="flex items-center gap-2 rounded-full border border-ink/10 bg-chalk px-3 py-1.5 text-sm"
-        >
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ backgroundColor: t.color || "var(--color-pitch)" }}
-          />
-          {t.name}
-          <DeleteButton action={deleteTeam} id={t.id} label={`Eliminar ${t.name}`} small />
-        </li>
-      ))}
+      {teams.map((t) => {
+        const n = countByTeam.get(t.id) ?? 0;
+        return (
+          <li key={t.id} className="flex items-center">
+            <Link
+              href={`/admin/equipos/${t.id}`}
+              className="flex items-center gap-2 rounded-full border border-ink/10 bg-chalk py-1.5 pl-3 pr-2.5 text-sm transition hover:border-pitch/30 hover:bg-pitch/5"
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: t.color || "var(--color-pitch)" }}
+              />
+              {t.name}
+              <span className="rounded-full bg-chalk-deep px-2 py-0.5 text-xs font-medium text-ink-soft">
+                {n}
+              </span>
+            </Link>
+            <DeleteButton action={deleteTeam} id={t.id} label={`Eliminar ${t.name}`} small />
+          </li>
+        );
+      })}
     </ul>
   );
 }

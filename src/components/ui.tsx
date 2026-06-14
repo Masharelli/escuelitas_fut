@@ -8,7 +8,7 @@ export function PageHeader({
   action,
 }: {
   eyebrow?: string;
-  title: string;
+  title: React.ReactNode;
   subtitle?: string;
   action?: React.ReactNode;
 }) {

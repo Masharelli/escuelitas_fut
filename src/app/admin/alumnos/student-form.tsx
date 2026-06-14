@@ -30,12 +30,16 @@ export function StudentForm({
   teams,
   student,
   submitLabel,
+  defaultCategoryId,
+  defaultTeamId,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   categories: Option[];
   teams: Option[];
   student?: Student;
   submitLabel: string;
+  defaultCategoryId?: string;
+  defaultTeamId?: string;
 }) {
   const [state, formAction] = useActionState<FormState, FormData>(
     action,
@@ -79,14 +83,14 @@ export function StudentForm({
             label="Categoría"
             name="categoryId"
             options={categories}
-            defaultValue={student?.categoryId ?? ""}
+            defaultValue={student?.categoryId ?? defaultCategoryId ?? ""}
             placeholder="Sin categoría"
           />
           <SelectField
             label="Equipo"
             name="teamId"
             options={teams}
-            defaultValue={student?.teamId ?? ""}
+            defaultValue={student?.teamId ?? defaultTeamId ?? ""}
             placeholder="Sin equipo"
           />
         </div>
