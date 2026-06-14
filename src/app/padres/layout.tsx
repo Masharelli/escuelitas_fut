@@ -1,11 +1,11 @@
 import { getActiveMembership } from "@/lib/tenant";
-import { PortalShell } from "@/components/portal-shell";
+import { PortalShell, type NavItem } from "@/components/portal-shell";
 
-const NAV = [
-  { href: "/padres", label: "Inicio" },
-  { href: "/padres/hijos", label: "Mis hijos" },
-  { href: "/padres/pagos", label: "Pagos" },
-  { href: "/padres/partidos", label: "Partidos" },
+const NAV: NavItem[] = [
+  { href: "/padres", label: "Inicio", icon: "home" },
+  { href: "/padres/hijos", label: "Mis hijos", icon: "kids" },
+  { href: "/padres/pagos", label: "Pagos", icon: "payments" },
+  { href: "/padres/partidos", label: "Partidos", icon: "matches" },
 ];
 
 export default async function PadresLayout({

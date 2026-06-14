@@ -39,6 +39,9 @@ yarn-error.log*
 .open-next
 sst-env.d.ts
 
+# archivos subidos en desarrollo local
+/public/uploads
+
 # vercel
 .vercel
 

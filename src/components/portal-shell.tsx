@@ -1,8 +1,8 @@
-import Link from "next/link";
+import { Wordmark } from "@/components/brand/wordmark";
+import { LogoutButton } from "@/components/logout-button";
+import { PortalNav, type NavItem } from "@/components/portal/portal-nav";
 
-import { LogoutButton } from "./logout-button";
-
-export type NavItem = { href: string; label: string };
+export type { NavItem };
 
 export function PortalShell({
   schoolName,
@@ -18,39 +18,72 @@ export function PortalShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-1">
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-slate-200 bg-white px-4 py-6 sm:flex">
+    <div className="flex w-full min-w-0 flex-1 bg-chalk text-ink">
+      {/* Menú lateral (escritorio) */}
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-ink/10 bg-white/70 px-4 py-6 md:flex">
         <div className="px-2">
-          <p className="text-sm font-semibold text-slate-900">{schoolName}</p>
-          <p className="text-xs text-emerald-600">{portalLabel}</p>
+          <Wordmark size="md" />
         </div>
-        <nav className="mt-6 flex flex-col gap-1">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+
+        <div className="mt-6 flex items-center gap-3 rounded-xl bg-chalk-deep/70 px-3 py-2.5">
+          <SchoolAvatar name={schoolName} />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-ink">{schoolName}</p>
+            <p className="text-xs font-medium text-pitch">{portalLabel}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex-1">
+          <PortalNav items={nav} />
+        </div>
+
+        <div className="mt-6 flex items-center justify-between gap-2 border-t border-ink/10 pt-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <UserAvatar name={userName} />
+            <span className="truncate text-sm text-ink-soft">
+              {userName ?? "Mi cuenta"}
+            </span>
+          </div>
+          <LogoutButton compact />
+        </div>
       </aside>
 
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-          <span className="text-sm font-medium text-slate-700 sm:hidden">
-            {schoolName}
-          </span>
-          <div className="ml-auto flex items-center gap-4">
-            {userName && (
-              <span className="text-sm text-slate-500">{userName}</span>
-            )}
-            <LogoutButton />
-          </div>
+      {/* Contenido */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Barra superior (móvil) */}
+        <header className="flex items-center justify-between border-b border-ink/10 bg-white/70 px-4 py-3 backdrop-blur md:hidden">
+          <Wordmark size="md" />
+          <LogoutButton compact />
         </header>
-        <main className="flex-1 px-6 py-8">{children}</main>
+        <div className="border-b border-ink/10 bg-white/40 pt-3 md:hidden">
+          <p className="px-4 pb-2 text-xs font-medium text-pitch">
+            {schoolName} · {portalLabel}
+          </p>
+          <PortalNav items={nav} variant="scroller" />
+        </div>
+
+        <main className="flex-1 px-5 py-6 sm:px-8 sm:py-8">{children}</main>
       </div>
     </div>
   );
+}
+
+function SchoolAvatar({ name }: { name: string }) {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pitch font-display text-base font-extrabold text-chalk">
+      {initial(name)}
+    </span>
+  );
+}
+
+function UserAvatar({ name }: { name?: string | null }) {
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink/10 text-xs font-semibold text-ink">
+      {initial(name ?? "?")}
+    </span>
+  );
+}
+
+function initial(value: string) {
+  return value.trim().charAt(0).toUpperCase() || "?";
 }

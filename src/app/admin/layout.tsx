@@ -1,12 +1,13 @@
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
-import { PortalShell } from "@/components/portal-shell";
+import { PortalShell, type NavItem } from "@/components/portal-shell";
 
-const NAV = [
-  { href: "/admin", label: "Inicio" },
-  { href: "/admin/alumnos", label: "Alumnos" },
-  { href: "/admin/equipos", label: "Equipos" },
-  { href: "/admin/pagos", label: "Pagos" },
-  { href: "/admin/partidos", label: "Partidos" },
+const NAV: NavItem[] = [
+  { href: "/admin", label: "Inicio", icon: "home" },
+  { href: "/admin/alumnos", label: "Alumnos", icon: "students" },
+  { href: "/admin/equipos", label: "Equipos", icon: "teams" },
+  { href: "/admin/pagos", label: "Pagos", icon: "payments" },
+  { href: "/admin/partidos", label: "Partidos", icon: "matches" },
+  { href: "/admin/escuela", label: "Mi escuela", icon: "school" },
 ];
 
 export default async function AdminLayout({

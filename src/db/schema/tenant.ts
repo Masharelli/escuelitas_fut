@@ -32,6 +32,13 @@ export const schools = pgTable("schools", {
   // slug único para URLs/subdominios (ej. /e/aguilas-fc)
   slug: text("slug").unique().notNull(),
   logoUrl: text("logo_url"),
+  // Perfil de la escuela (editable por el admin en Fase 1)
+  description: text("description"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  city: text("city"),
+  primaryColor: text("primary_color"),
   // Cuenta conectada de Stripe (Stripe Connect) — se llena en la fase de pagos
   stripeAccountId: text("stripe_account_id"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),

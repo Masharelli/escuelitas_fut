@@ -95,7 +95,7 @@ Next.js. Tras el primer deploy, corre las migraciones contra la base de Aurora.
 ## Roadmap
 
 - [x] **Fase 0 — Fundamentos:** auth, multi-escuela, roles, portales base, infra
-- [ ] **Fase 1 — Escuela y alumnos:** categorías, equipos, registro de alumnos
+- [x] **Fase 1 — Escuela y alumnos:** perfil de escuela (escudo, dirección, info), categorías, equipos y registro de alumnos (con foto y datos del tutor)
 - [ ] **Fase 2 — Portal de padres:** vinculación con hijos
 - [ ] **Fase 3 — Pagos:** mensualidades y adeudos con Stripe Connect
 - [ ] **Fase 4 — Partidos y torneos:** calendario, resultados, tabla
