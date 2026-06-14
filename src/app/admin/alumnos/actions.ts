@@ -12,23 +12,42 @@ import { saveImage, hasUpload } from "@/lib/uploads";
 
 export type FormState = { error?: string } | undefined;
 
+const opt = z.string().nullish();
+
 const schema = z.object({
   firstName: z.string().min(1, "Escribe el nombre"),
   lastName: z.string().min(1, "Escribe los apellidos"),
-  birthDate: z.string().optional(),
-  categoryId: z.string().optional(),
-  teamId: z.string().optional(),
-  guardianName: z.string().optional(),
-  guardianPhone: z.string().optional(),
+  birthDate: opt,
+  categoryId: opt,
+  teamId: opt,
+  // Personales / inscripción
+  sex: opt,
+  nationality: opt,
+  curp: opt,
+  address: opt,
+  city: opt,
+  school: opt,
+  // Deportivos
+  position: opt,
+  dominantFoot: opt,
+  jerseySize: opt,
+  // Médicos / emergencia
+  bloodType: opt,
+  allergies: z.string().max(500).nullish(),
+  emergencyName: opt,
+  emergencyPhone: opt,
+  // Tutor
+  guardianName: opt,
+  guardianPhone: opt,
   guardianEmail: z.string().email("Correo del tutor inválido").optional().or(z.literal("")),
-  notes: z.string().max(500).optional(),
+  notes: z.string().max(500).nullish(),
 });
 
 /** Verifica que categoría/equipo (si vienen) pertenezcan a la escuela. */
 async function resolveRefs(
   schoolId: string,
-  categoryId?: string,
-  teamId?: string
+  categoryId?: string | null,
+  teamId?: string | null
 ) {
   let catId: string | null = null;
   let tmId: string | null = null;
@@ -54,11 +73,48 @@ function parse(formData: FormData) {
     birthDate: formData.get("birthDate"),
     categoryId: formData.get("categoryId"),
     teamId: formData.get("teamId"),
+    sex: formData.get("sex"),
+    nationality: formData.get("nationality"),
+    curp: formData.get("curp"),
+    address: formData.get("address"),
+    city: formData.get("city"),
+    school: formData.get("school"),
+    position: formData.get("position"),
+    dominantFoot: formData.get("dominantFoot"),
+    jerseySize: formData.get("jerseySize"),
+    bloodType: formData.get("bloodType"),
+    allergies: formData.get("allergies"),
+    emergencyName: formData.get("emergencyName"),
+    emergencyPhone: formData.get("emergencyPhone"),
     guardianName: formData.get("guardianName"),
     guardianPhone: formData.get("guardianPhone"),
     guardianEmail: formData.get("guardianEmail"),
     notes: formData.get("notes"),
   });
+}
+
+/** Convierte los campos opcionales del alumno en columnas (cadena vacía → null). */
+function extraFields(d: z.infer<typeof schema>) {
+  const n = (v: string | null | undefined) => v || null;
+  return {
+    sex: n(d.sex),
+    nationality: n(d.nationality),
+    curp: n(d.curp),
+    address: n(d.address),
+    city: n(d.city),
+    school: n(d.school),
+    position: n(d.position),
+    dominantFoot: n(d.dominantFoot),
+    jerseySize: n(d.jerseySize),
+    bloodType: n(d.bloodType),
+    allergies: n(d.allergies),
+    emergencyName: n(d.emergencyName),
+    emergencyPhone: n(d.emergencyPhone),
+    guardianName: n(d.guardianName),
+    guardianPhone: n(d.guardianPhone),
+    guardianEmail: n(d.guardianEmail),
+    notes: n(d.notes),
+  };
 }
 
 export async function createStudent(
@@ -92,10 +148,7 @@ export async function createStudent(
     photoUrl: photoUrl ?? null,
     categoryId: refs.categoryId,
     teamId: refs.teamId,
-    guardianName: d.guardianName || null,
-    guardianPhone: d.guardianPhone || null,
-    guardianEmail: d.guardianEmail || null,
-    notes: d.notes || null,
+    ...extraFields(d),
   });
 
   revalidatePath("/admin/alumnos");
@@ -142,10 +195,7 @@ export async function updateStudent(
       photoUrl,
       categoryId: refs.categoryId,
       teamId: refs.teamId,
-      guardianName: d.guardianName || null,
-      guardianPhone: d.guardianPhone || null,
-      guardianEmail: d.guardianEmail || null,
-      notes: d.notes || null,
+      ...extraFields(d),
     })
     .where(and(eq(students.id, id), eq(students.schoolId, membership.schoolId)));
 

@@ -15,6 +15,13 @@
       "when": 1781398166147,
       "tag": "0001_careless_daimon_hellstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781401469513,
+      "tag": "0002_flippant_thor_girl",
+      "breakpoints": true
     }
   ]
 }

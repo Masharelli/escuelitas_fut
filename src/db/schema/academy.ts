@@ -65,6 +65,22 @@ export const students = pgTable("students", {
     onDelete: "set null",
   }),
   teamId: text("team_id").references(() => teams.id, { onDelete: "set null" }),
+  // Datos personales / de inscripción
+  sex: text("sex"), // masculino | femenino | otro
+  nationality: text("nationality"),
+  curp: text("curp"),
+  address: text("address"),
+  city: text("city"),
+  school: text("school"), // colegio donde estudia
+  // Datos deportivos
+  position: text("position"),
+  dominantFoot: text("dominant_foot"), // derecho | izquierdo | ambidiestro
+  jerseySize: text("jersey_size"),
+  // Datos médicos / emergencia
+  bloodType: text("blood_type"),
+  allergies: text("allergies"),
+  emergencyName: text("emergency_name"),
+  emergencyPhone: text("emergency_phone"),
   // Datos del tutor (papá/mamá) — se vincularán a cuentas de padres en Fase 2
   guardianName: text("guardian_name"),
   guardianPhone: text("guardian_phone"),

@@ -18,11 +18,44 @@ type Student = {
   photoUrl: string | null;
   categoryId: string | null;
   teamId: string | null;
+  sex: string | null;
+  nationality: string | null;
+  curp: string | null;
+  address: string | null;
+  city: string | null;
+  school: string | null;
+  position: string | null;
+  dominantFoot: string | null;
+  jerseySize: string | null;
+  bloodType: string | null;
+  allergies: string | null;
+  emergencyName: string | null;
+  emergencyPhone: string | null;
   guardianName: string | null;
   guardianPhone: string | null;
   guardianEmail: string | null;
   notes: string | null;
 };
+
+const SEX_OPTIONS = [
+  { value: "masculino", label: "Masculino" },
+  { value: "femenino", label: "Femenino" },
+  { value: "otro", label: "Otro" },
+];
+const FOOT_OPTIONS = [
+  { value: "derecho", label: "Derecho" },
+  { value: "izquierdo", label: "Izquierdo" },
+  { value: "ambidiestro", label: "Ambidiestro" },
+];
+const POSITION_OPTIONS = [
+  { value: "portero", label: "Portero" },
+  { value: "defensa", label: "Defensa" },
+  { value: "mediocampista", label: "Mediocampista" },
+  { value: "delantero", label: "Delantero" },
+];
+const SIZE_OPTIONS = ["4", "6", "8", "10", "12", "14", "16", "Ad. S", "Ad. M", "Ad. L"].map(
+  (s) => ({ value: s, label: s })
+);
 
 export function StudentForm({
   action,
@@ -78,7 +111,27 @@ export function StudentForm({
             required={false}
             defaultValue={student?.birthDate ?? undefined}
           />
-          <div className="hidden sm:block" />
+          <SelectField
+            label="Sexo"
+            name="sex"
+            options={SEX_OPTIONS}
+            defaultValue={student?.sex ?? ""}
+            placeholder="Selecciona…"
+          />
+          <TextField
+            label="Nacionalidad"
+            name="nationality"
+            required={false}
+            placeholder="Mexicana"
+            defaultValue={student?.nationality ?? undefined}
+          />
+          <TextField
+            label="CURP"
+            name="curp"
+            required={false}
+            placeholder="(opcional)"
+            defaultValue={student?.curp ?? undefined}
+          />
           <SelectField
             label="Categoría"
             name="categoryId"
@@ -92,6 +145,97 @@ export function StudentForm({
             options={teams}
             defaultValue={student?.teamId ?? defaultTeamId ?? ""}
             placeholder="Sin equipo"
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <p className="mb-4 text-sm font-semibold text-ink">Dirección y escuela</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <TextField
+              label="Dirección"
+              name="address"
+              required={false}
+              placeholder="Calle, número, colonia"
+              defaultValue={student?.address ?? undefined}
+            />
+          </div>
+          <TextField
+            label="Ciudad"
+            name="city"
+            required={false}
+            defaultValue={student?.city ?? undefined}
+          />
+          <TextField
+            label="Colegio donde estudia"
+            name="school"
+            required={false}
+            defaultValue={student?.school ?? undefined}
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <p className="mb-4 text-sm font-semibold text-ink">Datos deportivos</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectField
+            label="Posición"
+            name="position"
+            options={POSITION_OPTIONS}
+            defaultValue={student?.position ?? ""}
+            placeholder="Selecciona…"
+          />
+          <SelectField
+            label="Pie dominante"
+            name="dominantFoot"
+            options={FOOT_OPTIONS}
+            defaultValue={student?.dominantFoot ?? ""}
+            placeholder="Selecciona…"
+          />
+          <SelectField
+            label="Talla de uniforme"
+            name="jerseySize"
+            options={SIZE_OPTIONS}
+            defaultValue={student?.jerseySize ?? ""}
+            placeholder="Selecciona…"
+          />
+        </div>
+      </Card>
+
+      <Card>
+        <p className="mb-4 text-sm font-semibold text-ink">Salud y emergencia</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="Tipo de sangre"
+            name="bloodType"
+            required={false}
+            placeholder="Ej. O+"
+            defaultValue={student?.bloodType ?? undefined}
+          />
+          <div className="hidden sm:block" />
+          <div className="sm:col-span-2">
+            <TextareaField
+              label="Alergias / condiciones médicas"
+              name="allergies"
+              rows={2}
+              placeholder="Indica alergias, medicamentos o condiciones a considerar."
+              defaultValue={student?.allergies ?? undefined}
+            />
+          </div>
+          <TextField
+            label="Contacto de emergencia"
+            name="emergencyName"
+            required={false}
+            placeholder="Nombre"
+            defaultValue={student?.emergencyName ?? undefined}
+          />
+          <TextField
+            label="Teléfono de emergencia"
+            name="emergencyPhone"
+            type="tel"
+            required={false}
+            defaultValue={student?.emergencyPhone ?? undefined}
           />
         </div>
       </Card>

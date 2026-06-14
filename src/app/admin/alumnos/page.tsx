@@ -1,19 +1,50 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { students as studentsTable } from "@/db/schema";
 import { getActiveMembership } from "@/lib/tenant";
 import { PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
 import { StudentList } from "@/components/student-list";
+import { StudentFilters } from "./student-filters";
+import { getFormOptions } from "./options";
 
-export default async function AlumnosPage() {
+export default async function AlumnosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; cat?: string; team?: string }>;
+}) {
+  const { q, cat, team } = await searchParams;
   const { membership } = await getActiveMembership();
+  const schoolId = membership.schoolId;
+
+  // ¿Hay alumnos en total? (para distinguir "sin alumnos" de "sin resultados")
+  const total = await db
+    .select({ value: count() })
+    .from(studentsTable)
+    .where(eq(studentsTable.schoolId, schoolId))
+    .then((r) => r[0]?.value ?? 0);
+
+  const conditions = [eq(studentsTable.schoolId, schoolId)];
+  if (cat) conditions.push(eq(studentsTable.categoryId, cat));
+  if (team) conditions.push(eq(studentsTable.teamId, team));
+  if (q) {
+    const like = `%${q}%`;
+    conditions.push(
+      or(
+        ilike(studentsTable.firstName, like),
+        ilike(studentsTable.lastName, like),
+        sql`(${studentsTable.firstName} || ' ' || ${studentsTable.lastName}) ilike ${like}`
+      )!
+    );
+  }
 
   const students = await db.query.students.findMany({
-    where: eq(studentsTable.schoolId, membership.schoolId),
+    where: and(...conditions),
     with: { category: true, team: true },
     orderBy: [asc(studentsTable.lastName), asc(studentsTable.firstName)],
   });
+
+  const { categories, teams } = await getFormOptions(schoolId);
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -21,12 +52,12 @@ export default async function AlumnosPage() {
         eyebrow="Alumnos"
         title="Alumnos"
         subtitle={
-          students.length
-            ? `${students.length} alumno${students.length === 1 ? "" : "s"} registrado${students.length === 1 ? "" : "s"}.`
+          total
+            ? `${total} alumno${total === 1 ? "" : "s"} registrado${total === 1 ? "" : "s"}.`
             : "Registra a los alumnos de tu escuela."
         }
         action={
-          students.length > 0 ? (
+          total > 0 ? (
             <PrimaryLink href="/admin/alumnos/nuevo">
               <PlusIcon /> Nuevo alumno
             </PrimaryLink>
@@ -34,7 +65,7 @@ export default async function AlumnosPage() {
         }
       />
 
-      {students.length === 0 ? (
+      {total === 0 ? (
         <EmptyState
           icon={
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -56,7 +87,16 @@ export default async function AlumnosPage() {
           }
         />
       ) : (
-        <StudentList students={students} />
+        <>
+          <StudentFilters categories={categories} teams={teams} />
+          {students.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-ink/15 bg-white/60 p-8 text-center text-sm text-ink-soft">
+              No encontramos alumnos con esos filtros.
+            </p>
+          ) : (
+            <StudentList students={students} />
+          )}
+        </>
       )}
     </div>
   );
