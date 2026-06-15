@@ -1,15 +1,25 @@
-"use client";
-
-import { useActionState } from "react";
 import Link from "next/link";
 
-import { registerUser } from "../actions";
 import { AuthShell } from "@/components/auth-shell";
-import { TextField } from "@/components/text-field";
-import { SubmitButton } from "@/components/submit-button";
+import { RegistroForm } from "./registro-form";
 
-export default function RegistroPage() {
-  const [state, formAction] = useActionState(registerUser, undefined);
+/** Sólo conserva rutas internas para el redirect tras registrarse. */
+function safeNext(value?: string): string | undefined {
+  return value && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : undefined;
+}
+
+export default async function RegistroPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const target = safeNext(next);
+  const loginHref = target
+    ? `/login?next=${encodeURIComponent(target)}`
+    : "/login";
 
   return (
     <AuthShell
@@ -21,7 +31,7 @@ export default function RegistroPage() {
         <>
           ¿Ya tienes cuenta?{" "}
           <Link
-            href="/login"
+            href={loginHref}
             className="font-semibold text-pitch hover:text-pitch-deep"
           >
             Inicia sesión
@@ -29,34 +39,7 @@ export default function RegistroPage() {
         </>
       }
     >
-      <form action={formAction} className="space-y-4">
-        <TextField label="Nombre completo" name="name" autoComplete="name" />
-        <TextField
-          label="Correo"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="tu@correo.com"
-        />
-        <TextField
-          label="Contraseña"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          hint="Mínimo 8 caracteres"
-        />
-
-        {state?.error && (
-          <p
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-          >
-            {state.error}
-          </p>
-        )}
-
-        <SubmitButton>Crear cuenta</SubmitButton>
-      </form>
+      <RegistroForm next={target} />
     </AuthShell>
   );
 }

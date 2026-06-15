@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { getMyMemberships, ADMIN_ROLES, type Role } from "@/lib/tenant";
+import { claimStudentsByEmail } from "@/lib/guardians";
 import { Wordmark } from "@/components/brand/wordmark";
 import { PitchBackdrop } from "@/components/brand/pitch-backdrop";
 
@@ -11,10 +12,15 @@ export default async function HomePage() {
 
   // Usuario con sesión: lo enviamos a su portal según su rol.
   if (session?.user?.id) {
+    // Vincula al usuario con sus hijos si su correo coincide con el del tutor.
+    await claimStudentsByEmail(session.user.id, session.user.email);
+
     const mine = await getMyMemberships(session.user.id);
     if (mine.length === 0) redirect("/onboarding");
-    const role = mine[0].role as Role;
-    redirect(ADMIN_ROLES.includes(role) ? "/admin" : "/padres");
+    // Si es admin/owner/coach en alguna escuela, va al panel; si solo es padre,
+    // al portal de padres.
+    const hasAdmin = mine.some((m) => ADMIN_ROLES.includes(m.role as Role));
+    redirect(hasAdmin ? "/admin" : "/padres");
   }
 
   return (

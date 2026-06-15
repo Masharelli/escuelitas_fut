@@ -28,21 +28,26 @@ export function StudentList({
       <ul className="divide-y divide-ink/10">
         {students.map((s) => (
           <li key={s.id} className="flex flex-wrap items-center gap-3 p-4 sm:gap-4">
-            <Avatar name={s.firstName} photoUrl={s.photoUrl} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-ink">
-                {s.firstName} {s.lastName}
-              </p>
-              {showBadges && (
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  {s.category && <Badge>{s.category.name}</Badge>}
-                  {s.team && <Badge>{s.team.name}</Badge>}
-                  {!s.category && !s.team && (
-                    <span className="text-xs text-ink-soft">Sin asignar</span>
-                  )}
-                </div>
-              )}
-            </div>
+            <Link
+              href={`/admin/alumnos/${s.id}`}
+              className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4"
+            >
+              <Avatar name={s.firstName} photoUrl={s.photoUrl} />
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-ink">
+                  {s.firstName} {s.lastName}
+                </p>
+                {showBadges && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {s.category && <Badge>{s.category.name}</Badge>}
+                    {s.team && <Badge>{s.team.name}</Badge>}
+                    {!s.category && !s.team && (
+                      <span className="text-xs text-ink-soft">Sin asignar</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Link>
             {s.guardianName && (
               <div className="hidden text-right text-sm text-ink-soft sm:block">
                 <p className="text-ink">{s.guardianName}</p>

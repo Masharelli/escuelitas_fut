@@ -11,6 +11,12 @@ import { users } from "@/db/schema";
 
 export type ActionState = { error?: string } | undefined;
 
+/** Sólo permite redirigir a rutas internas (evita open-redirect). */
+function safeNext(value: FormDataEntryValue | null): string {
+  const v = typeof value === "string" ? value : "";
+  return v.startsWith("/") && !v.startsWith("//") ? v : "/";
+}
+
 const registerSchema = z.object({
   name: z.string().min(2, "Escribe tu nombre"),
   email: z.string().email("Correo inválido"),
@@ -47,11 +53,12 @@ export async function registerUser(
     passwordHash,
   });
 
-  // Inicia sesión automáticamente tras registrarse.
+  // Inicia sesión automáticamente tras registrarse. Por defecto la página de
+  // inicio decide a dónde llevarlo; si viene de una invitación, vuelve a ella.
   await signIn("credentials", {
     email,
     password: parsed.data.password,
-    redirectTo: "/onboarding",
+    redirectTo: safeNext(formData.get("next")),
   });
 }
 
@@ -67,7 +74,7 @@ export async function authenticate(
     await signIn("credentials", {
       email: String(formData.get("email") ?? "").toLowerCase(),
       password: formData.get("password"),
-      redirectTo: "/",
+      redirectTo: safeNext(formData.get("next")),
     });
   } catch (error) {
     if (error instanceof AuthError) {

@@ -9,6 +9,7 @@ import { db } from "@/db";
 import { students, categories, teams } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { saveImage, hasUpload } from "@/lib/uploads";
+import { createInvitation, revokeInvitation } from "@/lib/invitations";
 
 export type FormState = { error?: string } | undefined;
 
@@ -201,6 +202,35 @@ export async function updateStudent(
 
   revalidatePath("/admin/alumnos");
   redirect("/admin/alumnos");
+}
+
+/** Genera (o reutiliza) un enlace de invitación de tutor para el alumno. */
+export async function inviteGuardian(formData: FormData) {
+  const { membership } = await requireRole(ADMIN_ROLES);
+  const studentId = String(formData.get("studentId") ?? "");
+  if (!studentId) return;
+
+  const student = await db.query.students.findFirst({
+    where: and(
+      eq(students.id, studentId),
+      eq(students.schoolId, membership.schoolId)
+    ),
+  });
+  if (!student) return;
+
+  await createInvitation(membership.schoolId, studentId, student.guardianEmail);
+  revalidatePath(`/admin/alumnos/${studentId}`);
+}
+
+/** Revoca una invitación de tutor pendiente. */
+export async function revokeGuardianInvitation(formData: FormData) {
+  const { membership } = await requireRole(ADMIN_ROLES);
+  const id = String(formData.get("invitationId") ?? "");
+  const studentId = String(formData.get("studentId") ?? "");
+  if (id) {
+    await revokeInvitation(id, membership.schoolId);
+    revalidatePath(`/admin/alumnos/${studentId}`);
+  }
 }
 
 export async function deleteStudent(formData: FormData) {

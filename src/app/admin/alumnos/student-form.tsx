@@ -264,7 +264,8 @@ export function StudentForm({
               name="guardianEmail"
               type="email"
               required={false}
-              placeholder="Para vincular su cuenta en la Fase 2"
+              placeholder="correo@ejemplo.com"
+              hint="Con este correo el papá/mamá podrá ver a su hijo al registrarse."
               defaultValue={student?.guardianEmail ?? undefined}
             />
           </div>

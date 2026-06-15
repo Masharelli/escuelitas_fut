@@ -1,3 +1,5 @@
+import { auth } from "@/auth";
+import { claimStudentsByEmail } from "@/lib/guardians";
 import { getActiveMembership } from "@/lib/tenant";
 import { PortalShell, type NavItem } from "@/components/portal-shell";
 
@@ -13,13 +15,19 @@ export default async function PadresLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { session, membership } = await getActiveMembership();
+  // Vincula al usuario con sus hijos por correo (por si la escuela agregó nuevos).
+  const session = await auth();
+  if (session?.user?.id) {
+    await claimStudentsByEmail(session.user.id, session.user.email);
+  }
+
+  const { session: active, membership } = await getActiveMembership();
 
   return (
     <PortalShell
       schoolName={membership.school.name}
       portalLabel="Portal de padres"
-      userName={session.user.name}
+      userName={active.user.name}
       nav={NAV}
     >
       {children}

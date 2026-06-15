@@ -1,15 +1,25 @@
-"use client";
-
-import { useActionState } from "react";
 import Link from "next/link";
 
-import { authenticate } from "../actions";
 import { AuthShell } from "@/components/auth-shell";
-import { TextField } from "@/components/text-field";
-import { SubmitButton } from "@/components/submit-button";
+import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
-  const [state, formAction] = useActionState(authenticate, undefined);
+/** Sólo conserva rutas internas para el redirect tras iniciar sesión. */
+function safeNext(value?: string): string | undefined {
+  return value && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : undefined;
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const target = safeNext(next);
+  const registroHref = target
+    ? `/registro?next=${encodeURIComponent(target)}`
+    : "/registro";
 
   return (
     <AuthShell
@@ -21,7 +31,7 @@ export default function LoginPage() {
         <>
           ¿No tienes cuenta?{" "}
           <Link
-            href="/registro"
+            href={registroHref}
             className="font-semibold text-pitch hover:text-pitch-deep"
           >
             Crea una
@@ -29,32 +39,7 @@ export default function LoginPage() {
         </>
       }
     >
-      <form action={formAction} className="space-y-4">
-        <TextField
-          label="Correo"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="tu@correo.com"
-        />
-        <TextField
-          label="Contraseña"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-        />
-
-        {state?.error && (
-          <p
-            role="alert"
-            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-          >
-            {state.error}
-          </p>
-        )}
-
-        <SubmitButton>Entrar</SubmitButton>
-      </form>
+      <LoginForm next={target} />
     </AuthShell>
   );
 }
