@@ -8,6 +8,7 @@ import {
   formatMoney,
   periodLabel,
   summarizeCharges,
+  isOverdue,
   KIND_LABELS,
   CHARGE_STATUS_LABELS,
   type ChargeKind,
@@ -223,7 +224,13 @@ export default async function FinanzasPage({
                 <span className="font-display font-bold text-ink">
                   {formatMoney(c.amountCents, c.currency)}
                 </span>
-                <StatusBadge status={c.status} />
+                {isOverdue(c) ? (
+                  <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                    Vencido
+                  </span>
+                ) : (
+                  <StatusBadge status={c.status} />
+                )}
                 {c.status === "pending" && (
                   <>
                     <ChargeAction action={markChargePaid} id={c.id} label="Marcar pagado" primary />

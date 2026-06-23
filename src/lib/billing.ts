@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db";
-import { charges, guardianships, plans, students } from "@/db/schema";
+import { charges, guardianships, plans, students, schools } from "@/db/schema";
 import { tenantDb } from "@/lib/tenant-db";
 
 export type ChargeKind = "monthly" | "enrollment" | "event" | "product";
@@ -100,6 +100,29 @@ export function formatMoney(cents: number, currency = "MXN"): string {
   }).format(cents / 100);
 }
 
+/** "2026-06-05" → "5 jun 2026". Vacío si no hay fecha. */
+export function formatDueDate(due: string | null): string {
+  if (!due) return "";
+  const d = new Date(`${due}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("es-MX", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(d);
+}
+
+/** ¿El cargo está vencido? (pendiente y su fecha límite ya pasó). */
+export function isOverdue(charge: {
+  status: string;
+  dueDate: string | null;
+}): boolean {
+  if (charge.status !== "pending" || !charge.dueDate) return false;
+  const today = new Date();
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return charge.dueDate < todayISO;
+}
+
 /** Pesos escritos por el admin (ej. "500" o "500.50") → centavos enteros. */
 export function pesosToCents(input: string): number | null {
   const n = Number(String(input).replace(/[^0-9.]/g, ""));
@@ -126,6 +149,15 @@ export async function generateMonthlyCharges(
   });
   if (monthlyPlans.length === 0) return 0;
 
+  // Fecha de vencimiento = día configurado por la escuela, dentro del periodo.
+  const school = await db.query.schools.findFirst({
+    where: eq(schools.id, schoolId),
+    columns: { paymentDueDay: true },
+  });
+  const dueDate = school?.paymentDueDay
+    ? `${period}-${String(school.paymentDueDay).padStart(2, "0")}`
+    : null;
+
   const label = periodLabel(period);
   const rows: {
     studentId: string;
@@ -135,6 +167,7 @@ export async function generateMonthlyCharges(
     amountCents: number;
     currency: string;
     periodMonth: string;
+    dueDate: string | null;
   }[] = [];
 
   for (const plan of monthlyPlans) {
@@ -157,6 +190,7 @@ export async function generateMonthlyCharges(
         amountCents: plan.amountCents,
         currency: plan.currency,
         periodMonth: period,
+        dueDate,
       });
     }
   }

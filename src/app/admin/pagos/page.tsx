@@ -30,6 +30,7 @@ import {
   markChargePaid,
   cancelCharge,
   connectStripe,
+  setPaymentDueDay,
 } from "./actions";
 
 export default async function AdminPagosPage({
@@ -119,6 +120,33 @@ export default async function AdminPagosPage({
           </form>
         </div>
       )}
+
+      {/* Día de vencimiento de las cuotas */}
+      <form
+        action={setPaymentDueDay}
+        className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-ink/10 bg-white/70 px-4 py-3 text-sm"
+      >
+        <span className="text-ink-soft">Las cuotas vencen el día</span>
+        <input
+          type="number"
+          name="dueDay"
+          min={1}
+          max={28}
+          defaultValue={school?.paymentDueDay ?? ""}
+          placeholder="—"
+          className="w-16 rounded-lg border border-ink/15 bg-white px-2 py-1.5 text-center text-ink shadow-sm outline-none focus:border-pitch focus:ring-2 focus:ring-pitch/20"
+        />
+        <span className="text-ink-soft">de cada mes.</span>
+        <button
+          type="submit"
+          className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:text-ink"
+        >
+          Guardar
+        </button>
+        <span className="text-xs text-ink-soft/80">
+          (déjalo vacío para no usar vencimiento)
+        </span>
+      </form>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>

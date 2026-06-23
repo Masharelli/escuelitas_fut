@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   timestamp,
+  integer,
   boolean,
   pgEnum,
   uniqueIndex,
@@ -40,6 +41,8 @@ export const schools = pgTable("schools", {
   address: text("address"),
   city: text("city"),
   primaryColor: text("primary_color"),
+  // Día del mes en que vencen las cuotas mensuales (1-28). Null = sin vencimiento.
+  paymentDueDay: integer("payment_due_day"),
   // Cuenta conectada de Stripe (Stripe Connect Express) — Fase 3 (pagos).
   stripeAccountId: text("stripe_account_id"),
   // ¿La escuela completó el onboarding y ya puede cobrar? (webhook account.updated)

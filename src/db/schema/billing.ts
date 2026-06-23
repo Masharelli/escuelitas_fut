@@ -11,6 +11,7 @@ import {
 import { relations } from "drizzle-orm";
 import { schools } from "./tenant";
 import { students, categories } from "./academy";
+import { users } from "./auth";
 
 /**
  * Cobros de una escuela (Fase 3). Todo se aísla por `schoolId`.
@@ -128,6 +129,49 @@ export const charges = pgTable(
     ),
   ]
 );
+
+export const autopayStatus = pgEnum("autopay_status", [
+  "pending", // se creó el customer pero aún no hay tarjeta guardada
+  "active", // tarjeta guardada y lista para cobro automático
+  "off", // el tutor lo desactivó
+]);
+
+/**
+ * Pago automático de un alumno (enfoque B): el tutor guarda una tarjeta una vez
+ * (Stripe Customer en la cuenta conectada de la escuela) y, al generar las
+ * cuotas del mes, se cobra off-session a esa tarjeta. Una fila por alumno.
+ */
+export const autopay = pgTable(
+  "autopay",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    schoolId: text("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    // Tutor que registró la tarjeta.
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // En la cuenta CONECTADA de la escuela.
+    stripeCustomerId: text("stripe_customer_id").notNull(),
+    stripePaymentMethodId: text("stripe_payment_method_id"),
+    status: autopayStatus("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("autopay_student_uq").on(t.studentId)]
+);
+
+export const autopayRelations = relations(autopay, ({ one }) => ({
+  student: one(students, {
+    fields: [autopay.studentId],
+    references: [students.id],
+  }),
+}));
 
 export const plansRelations = relations(plans, ({ one, many }) => ({
   school: one(schools, {

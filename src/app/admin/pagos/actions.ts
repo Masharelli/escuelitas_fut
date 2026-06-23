@@ -10,7 +10,7 @@ import { db } from "@/db";
 import { students, schools } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, chargeAutopayForPeriod } from "@/lib/stripe";
 import {
   generateMonthlyCharges,
   pesosToCents,
@@ -114,6 +114,20 @@ export async function createPlan(
   return { ok: true };
 }
 
+/** Configura el día del mes (1-28) en que vencen las cuotas; vacío = sin vencimiento. */
+export async function setPaymentDueDay(formData: FormData) {
+  const { membership } = await requireRole(["owner", "admin"]);
+  const raw = String(formData.get("dueDay") ?? "").trim();
+  const n = Math.trunc(Number(raw));
+  const day =
+    raw === "" || !Number.isFinite(n) ? null : Math.min(28, Math.max(1, n));
+  await db
+    .update(schools)
+    .set({ paymentDueDay: day })
+    .where(eq(schools.id, membership.schoolId));
+  revalidatePath("/admin/pagos");
+}
+
 export async function deletePlan(formData: FormData) {
   const { membership } = await requireRole(ADMIN_ROLES);
   const id = String(formData.get("id") ?? "");
@@ -136,7 +150,10 @@ export async function generateCharges(
   }
 
   await generateMonthlyCharges(membership.schoolId, period);
+  // Cobra automáticamente a los alumnos con tarjeta guardada (autopago).
+  await chargeAutopayForPeriod(membership.schoolId, period);
   revalidatePath("/admin/pagos");
+  revalidatePath("/admin/finanzas");
   return { ok: true };
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE "schools" ADD COLUMN "payment_due_day" integer;

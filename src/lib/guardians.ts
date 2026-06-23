@@ -7,6 +7,7 @@ import {
   memberships,
   matches,
   tournaments,
+  autopay,
 } from "@/db/schema";
 
 /**
@@ -110,6 +111,20 @@ export async function getMyChildrenTournaments(userId: string) {
     where: inArray(tournaments.id, tournamentIds),
     with: { standings: true },
   });
+}
+
+/** Estado de pago automático por hijo: Map studentId → status. */
+export async function getMyChildrenAutopay(userId: string) {
+  const links = await db.query.guardianships.findMany({
+    where: eq(guardianships.userId, userId),
+    columns: { studentId: true },
+  });
+  const ids = links.map((l) => l.studentId);
+  if (ids.length === 0) return new Map<string, string>();
+  const rows = await db.query.autopay.findMany({
+    where: inArray(autopay.studentId, ids),
+  });
+  return new Map(rows.map((r) => [r.studentId, r.status] as const));
 }
 
 /** Un hijo específico del usuario (o null si no le pertenece). */

@@ -57,6 +57,20 @@
       "when": 1781985297357,
       "tag": "0007_dear_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782245765497,
+      "tag": "0008_mean_storm",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782246760641,
+      "tag": "0009_wandering_wildside",
+      "breakpoints": true
     }
   ]
 }
