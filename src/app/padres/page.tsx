@@ -35,7 +35,7 @@ export default async function PadresHomePage() {
         ) : (
           <>
             <h2 className="mb-3 font-display text-lg font-bold">Mis hijos</h2>
-            <ChildrenGrid children={children} />
+            <ChildrenGrid kids={children} />
           </>
         )}
       </div>

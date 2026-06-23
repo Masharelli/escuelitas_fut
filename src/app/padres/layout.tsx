@@ -21,7 +21,7 @@ export default async function PadresLayout({
     await claimStudentsByEmail(session.user.id, session.user.email);
   }
 
-  const { session: active, membership } = await getActiveMembership();
+  const { session: active, membership, all } = await getActiveMembership();
 
   return (
     <PortalShell
@@ -29,6 +29,8 @@ export default async function PadresLayout({
       portalLabel="Portal de padres"
       userName={active.user.name}
       nav={NAV}
+      schools={all.map((m) => ({ id: m.schoolId, name: m.school.name }))}
+      activeSchoolId={membership.schoolId}
     >
       {children}
     </PortalShell>

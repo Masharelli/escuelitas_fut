@@ -1,8 +1,5 @@
-import { and, eq } from "drizzle-orm";
-
-import { db } from "@/db";
-import { teams as teamsTable } from "@/db/schema";
-import { getActiveMembership } from "@/lib/tenant";
+import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { tenantDb } from "@/lib/tenant-db";
 import { PageHeader } from "@/components/ui";
 import { StudentForm } from "../student-form";
 import { getFormOptions } from "../options";
@@ -14,16 +11,14 @@ export default async function NuevoAlumnoPage({
   searchParams: Promise<{ team?: string }>;
 }) {
   const { team } = await searchParams;
-  const { membership } = await getActiveMembership();
+  const { membership } = await requireRole(ADMIN_ROLES);
   const { categories, teams } = await getFormOptions(membership.schoolId);
 
   // Si llegamos desde un equipo, preseleccionamos ese equipo y su categoría.
   let defaultTeamId: string | undefined;
   let defaultCategoryId: string | undefined;
   if (team) {
-    const t = await db.query.teams.findFirst({
-      where: and(eq(teamsTable.id, team), eq(teamsTable.schoolId, membership.schoolId)),
-    });
+    const t = await tenantDb(membership.schoolId).teams.findById(team);
     if (t) {
       defaultTeamId = t.id;
       defaultCategoryId = t.categoryId ?? undefined;

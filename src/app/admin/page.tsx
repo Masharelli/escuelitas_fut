@@ -1,26 +1,27 @@
 import Link from "next/link";
-import { count, eq } from "drizzle-orm";
+import { count } from "drizzle-orm";
 
 import { db } from "@/db";
 import { students, teams } from "@/db/schema";
-import { getActiveMembership } from "@/lib/tenant";
+import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { tenantDb } from "@/lib/tenant-db";
 import { PrimaryLink } from "@/components/ui";
 
 export default async function AdminHomePage() {
-  const { membership, session } = await getActiveMembership();
-  const schoolId = membership.schoolId;
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  const tdb = tenantDb(membership.schoolId);
   const firstName = session.user.name?.split(" ")[0] ?? "";
 
   const [studentCount, teamCount] = await Promise.all([
     db
       .select({ value: count() })
       .from(students)
-      .where(eq(students.schoolId, schoolId))
+      .where(tdb.students.scope())
       .then((r) => r[0]?.value ?? 0),
     db
       .select({ value: count() })
       .from(teams)
-      .where(eq(teams.schoolId, schoolId))
+      .where(tdb.teams.scope())
       .then((r) => r[0]?.value ?? 0),
   ]);
 

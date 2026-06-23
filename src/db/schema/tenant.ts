@@ -2,6 +2,7 @@ import {
   pgTable,
   text,
   timestamp,
+  boolean,
   pgEnum,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -39,8 +40,15 @@ export const schools = pgTable("schools", {
   address: text("address"),
   city: text("city"),
   primaryColor: text("primary_color"),
-  // Cuenta conectada de Stripe (Stripe Connect) — se llena en la fase de pagos
+  // Cuenta conectada de Stripe (Stripe Connect Express) — Fase 3 (pagos).
   stripeAccountId: text("stripe_account_id"),
+  // ¿La escuela completó el onboarding y ya puede cobrar? (webhook account.updated)
+  stripeChargesEnabled: boolean("stripe_charges_enabled")
+    .notNull()
+    .default(false),
+  stripeDetailsSubmitted: boolean("stripe_details_submitted")
+    .notNull()
+    .default(false),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 

@@ -2,12 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { db } from "@/db";
-import { students, categories, teams } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { tenantDb } from "@/lib/tenant-db";
 import { saveImage, hasUpload } from "@/lib/uploads";
 import { createInvitation, revokeInvitation } from "@/lib/invitations";
 
@@ -46,23 +44,17 @@ const schema = z.object({
 
 /** Verifica que categoría/equipo (si vienen) pertenezcan a la escuela. */
 async function resolveRefs(
-  schoolId: string,
+  tdb: ReturnType<typeof tenantDb>,
   categoryId?: string | null,
   teamId?: string | null
 ) {
   let catId: string | null = null;
   let tmId: string | null = null;
   if (categoryId) {
-    const c = await db.query.categories.findFirst({
-      where: and(eq(categories.id, categoryId), eq(categories.schoolId, schoolId)),
-    });
-    catId = c?.id ?? null;
+    catId = (await tdb.categories.findById(categoryId))?.id ?? null;
   }
   if (teamId) {
-    const t = await db.query.teams.findFirst({
-      where: and(eq(teams.id, teamId), eq(teams.schoolId, schoolId)),
-    });
-    tmId = t?.id ?? null;
+    tmId = (await tdb.teams.findById(teamId))?.id ?? null;
   }
   return { categoryId: catId, teamId: tmId };
 }
@@ -139,10 +131,10 @@ export async function createStudent(
     }
   }
 
-  const refs = await resolveRefs(membership.schoolId, d.categoryId, d.teamId);
+  const tdb = tenantDb(membership.schoolId);
+  const refs = await resolveRefs(tdb, d.categoryId, d.teamId);
 
-  await db.insert(students).values({
-    schoolId: membership.schoolId,
+  await tdb.students.insert({
     firstName: d.firstName,
     lastName: d.lastName,
     birthDate: d.birthDate || null,
@@ -164,9 +156,8 @@ export async function updateStudent(
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Alumno no encontrado" };
 
-  const current = await db.query.students.findFirst({
-    where: and(eq(students.id, id), eq(students.schoolId, membership.schoolId)),
-  });
+  const tdb = tenantDb(membership.schoolId);
+  const current = await tdb.students.findById(id);
   if (!current) return { error: "Alumno no encontrado" };
 
   const parsed = parse(formData);
@@ -185,20 +176,17 @@ export async function updateStudent(
     }
   }
 
-  const refs = await resolveRefs(membership.schoolId, d.categoryId, d.teamId);
+  const refs = await resolveRefs(tdb, d.categoryId, d.teamId);
 
-  await db
-    .update(students)
-    .set({
-      firstName: d.firstName,
-      lastName: d.lastName,
-      birthDate: d.birthDate || null,
-      photoUrl,
-      categoryId: refs.categoryId,
-      teamId: refs.teamId,
-      ...extraFields(d),
-    })
-    .where(and(eq(students.id, id), eq(students.schoolId, membership.schoolId)));
+  await tdb.students.updateById(id, {
+    firstName: d.firstName,
+    lastName: d.lastName,
+    birthDate: d.birthDate || null,
+    photoUrl,
+    categoryId: refs.categoryId,
+    teamId: refs.teamId,
+    ...extraFields(d),
+  });
 
   revalidatePath("/admin/alumnos");
   redirect("/admin/alumnos");
@@ -210,12 +198,9 @@ export async function inviteGuardian(formData: FormData) {
   const studentId = String(formData.get("studentId") ?? "");
   if (!studentId) return;
 
-  const student = await db.query.students.findFirst({
-    where: and(
-      eq(students.id, studentId),
-      eq(students.schoolId, membership.schoolId)
-    ),
-  });
+  const student = await tenantDb(membership.schoolId).students.findById(
+    studentId
+  );
   if (!student) return;
 
   await createInvitation(membership.schoolId, studentId, student.guardianEmail);
@@ -237,9 +222,7 @@ export async function deleteStudent(formData: FormData) {
   const { membership } = await requireRole(ADMIN_ROLES);
   const id = String(formData.get("id") ?? "");
   if (id) {
-    await db
-      .delete(students)
-      .where(and(eq(students.id, id), eq(students.schoolId, membership.schoolId)));
+    await tenantDb(membership.schoolId).students.deleteById(id);
   }
   revalidatePath("/admin/alumnos");
 }

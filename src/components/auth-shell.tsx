@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Wordmark } from "@/components/brand/wordmark";
 import { PitchBackdrop } from "@/components/brand/pitch-backdrop";
+import { SchoolCrest } from "@/components/brand/school-crest";
 
 /**
  * Marco común de las pantallas de autenticación (login, registro, recuperar):
@@ -15,6 +16,7 @@ export function AuthShell({
   backHref = "/",
   backLabel = "Inicio",
   topLeft,
+  brand,
   children,
   footer,
 }: {
@@ -24,6 +26,8 @@ export function AuthShell({
   backLabel?: string;
   /** Reemplaza el botón de regresar por defecto (p. ej. "Cerrar sesión"). */
   topLeft?: React.ReactNode;
+  /** Si viene de una escuela (`/e/[slug]`), muestra su escudo y nombre. */
+  brand?: { name: string; logoUrl: string | null };
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
@@ -53,7 +57,16 @@ export function AuthShell({
 
       <section className="relative z-10 flex w-full min-w-0 flex-1 flex-col items-center justify-center px-6 pb-16">
         <div className="rise flex w-full max-w-md flex-col items-center">
-          <Wordmark size="lg" />
+          {brand ? (
+            <div className="flex flex-col items-center gap-2.5">
+              <SchoolCrest name={brand.name} logoUrl={brand.logoUrl} size={64} />
+              <span className="font-display text-xl font-extrabold tracking-tight">
+                {brand.name}
+              </span>
+            </div>
+          ) : (
+            <Wordmark size="lg" />
+          )}
 
           <div className="mt-8 w-full rounded-2xl border border-ink/10 bg-white/85 p-6 shadow-sm backdrop-blur sm:p-8">
             <h1 className="font-display text-2xl font-extrabold tracking-tight">

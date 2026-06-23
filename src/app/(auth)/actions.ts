@@ -8,14 +8,9 @@ import { AuthError } from "next-auth";
 import { signIn, signOut } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { safeNext } from "@/lib/safe-next";
 
 export type ActionState = { error?: string } | undefined;
-
-/** Sólo permite redirigir a rutas internas (evita open-redirect). */
-function safeNext(value: FormDataEntryValue | null): string {
-  const v = typeof value === "string" ? value : "";
-  return v.startsWith("/") && !v.startsWith("//") ? v : "/";
-}
 
 const registerSchema = z.object({
   name: z.string().min(2, "Escribe tu nombre"),

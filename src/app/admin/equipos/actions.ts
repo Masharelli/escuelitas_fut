@@ -1,12 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { db } from "@/db";
-import { categories, teams } from "@/db/schema";
+import { categories } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { tenantDb } from "@/lib/tenant-db";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -33,22 +33,17 @@ export async function createCategory(
   const birthYear =
     typeof parsed.data.birthYear === "number" ? parsed.data.birthYear : null;
 
-  // Evita duplicados por nombre dentro de la escuela.
-  const existing = await db.query.categories.findFirst({
-    where: and(
-      eq(categories.schoolId, membership.schoolId),
-      eq(categories.name, parsed.data.name)
-    ),
+  const tdb = tenantDb(membership.schoolId);
+
+  // Evita duplicados por nombre dentro de la escuela (el schoolId lo añade el facade).
+  const existing = await tdb.categories.findFirst({
+    where: eq(categories.name, parsed.data.name),
   });
   if (existing) {
     return { error: "Ya existe una categoría con ese nombre" };
   }
 
-  await db.insert(categories).values({
-    schoolId: membership.schoolId,
-    name: parsed.data.name,
-    birthYear,
-  });
+  await tdb.categories.insert({ name: parsed.data.name, birthYear });
   revalidatePath("/admin/equipos");
   return { ok: true };
 }
@@ -73,21 +68,17 @@ export async function createTeam(
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
 
+  const tdb = tenantDb(membership.schoolId);
+
   // Si mandan categoría, verifica que sea de esta escuela.
   let categoryId: string | null = null;
   if (parsed.data.categoryId) {
-    const cat = await db.query.categories.findFirst({
-      where: and(
-        eq(categories.id, parsed.data.categoryId),
-        eq(categories.schoolId, membership.schoolId)
-      ),
-    });
+    const cat = await tdb.categories.findById(parsed.data.categoryId);
     if (!cat) return { error: "Categoría inválida" };
     categoryId = cat.id;
   }
 
-  await db.insert(teams).values({
-    schoolId: membership.schoolId,
+  await tdb.teams.insert({
     name: parsed.data.name,
     categoryId,
     color: parsed.data.color || null,
@@ -100,11 +91,7 @@ export async function deleteCategory(formData: FormData) {
   const { membership } = await requireRole(ADMIN_ROLES);
   const id = String(formData.get("id") ?? "");
   if (id) {
-    await db
-      .delete(categories)
-      .where(
-        and(eq(categories.id, id), eq(categories.schoolId, membership.schoolId))
-      );
+    await tenantDb(membership.schoolId).categories.deleteById(id);
   }
   revalidatePath("/admin/equipos");
 }
@@ -113,9 +100,7 @@ export async function deleteTeam(formData: FormData) {
   const { membership } = await requireRole(ADMIN_ROLES);
   const id = String(formData.get("id") ?? "");
   if (id) {
-    await db
-      .delete(teams)
-      .where(and(eq(teams.id, id), eq(teams.schoolId, membership.schoolId)));
+    await tenantDb(membership.schoolId).teams.deleteById(id);
   }
   revalidatePath("/admin/equipos");
 }

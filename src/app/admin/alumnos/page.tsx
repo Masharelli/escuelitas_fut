@@ -2,7 +2,8 @@ import { and, asc, count, eq, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { students as studentsTable } from "@/db/schema";
-import { getActiveMembership } from "@/lib/tenant";
+import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { tenantDb } from "@/lib/tenant-db";
 import { PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
 import { StudentList } from "@/components/student-list";
 import { StudentFilters } from "./student-filters";
@@ -14,17 +15,18 @@ export default async function AlumnosPage({
   searchParams: Promise<{ q?: string; cat?: string; team?: string }>;
 }) {
   const { q, cat, team } = await searchParams;
-  const { membership } = await getActiveMembership();
+  const { membership } = await requireRole(ADMIN_ROLES);
   const schoolId = membership.schoolId;
+  const tdb = tenantDb(schoolId);
 
   // ¿Hay alumnos en total? (para distinguir "sin alumnos" de "sin resultados")
   const total = await db
     .select({ value: count() })
     .from(studentsTable)
-    .where(eq(studentsTable.schoolId, schoolId))
+    .where(tdb.students.scope())
     .then((r) => r[0]?.value ?? 0);
 
-  const conditions = [eq(studentsTable.schoolId, schoolId)];
+  const conditions = [];
   if (cat) conditions.push(eq(studentsTable.categoryId, cat));
   if (team) conditions.push(eq(studentsTable.teamId, team));
   if (q) {
@@ -38,7 +40,8 @@ export default async function AlumnosPage({
     );
   }
 
-  const students = await db.query.students.findMany({
+  // El facade añade el filtro de escuela; aquí sólo van los filtros de búsqueda.
+  const students = await tdb.students.findMany({
     where: and(...conditions),
     with: { category: true, team: true },
     orderBy: [asc(studentsTable.lastName), asc(studentsTable.firstName)],

@@ -1,6 +1,10 @@
 import { Wordmark } from "@/components/brand/wordmark";
 import { LogoutButton } from "@/components/logout-button";
 import { PortalNav, type NavItem } from "@/components/portal/portal-nav";
+import {
+  SchoolSwitcher,
+  type SwitchableSchool,
+} from "@/components/portal/school-switcher";
 
 export type { NavItem };
 
@@ -9,14 +13,20 @@ export function PortalShell({
   portalLabel,
   userName,
   nav,
+  schools,
+  activeSchoolId,
   children,
 }: {
   schoolName: string;
   portalLabel: string;
   userName?: string | null;
   nav: NavItem[];
+  /** Escuelas entre las que puede cambiar el usuario en este portal. */
+  schools?: SwitchableSchool[];
+  activeSchoolId?: string;
   children: React.ReactNode;
 }) {
+  const canSwitch = !!schools && schools.length > 1 && !!activeSchoolId;
   return (
     <div className="flex w-full min-w-0 flex-1 bg-chalk text-ink">
       {/* Menú lateral (escritorio) */}
@@ -32,6 +42,10 @@ export function PortalShell({
             <p className="text-xs font-medium text-pitch">{portalLabel}</p>
           </div>
         </div>
+
+        {canSwitch && (
+          <SchoolSwitcher schools={schools} activeId={activeSchoolId} />
+        )}
 
         <div className="mt-6 flex-1">
           <PortalNav items={nav} />
@@ -56,9 +70,18 @@ export function PortalShell({
           <LogoutButton compact />
         </header>
         <div className="border-b border-ink/10 bg-white/40 pt-3 md:hidden">
-          <p className="px-4 pb-2 text-xs font-medium text-pitch">
-            {schoolName} · {portalLabel}
-          </p>
+          {canSwitch ? (
+            <div className="px-4 pb-2">
+              <SchoolSwitcher schools={schools} activeId={activeSchoolId} />
+              <p className="mt-1.5 text-xs font-medium text-pitch">
+                {portalLabel}
+              </p>
+            </div>
+          ) : (
+            <p className="px-4 pb-2 text-xs font-medium text-pitch">
+              {schoolName} · {portalLabel}
+            </p>
+          )}
           <PortalNav items={nav} variant="scroller" />
         </div>
 

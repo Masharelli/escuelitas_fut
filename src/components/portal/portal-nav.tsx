@@ -9,6 +9,7 @@ export type NavIcon =
   | "teams"
   | "payments"
   | "matches"
+  | "trophy"
   | "kids"
   | "school";
 
@@ -57,6 +58,23 @@ const ICONS: Record<NavIcon, React.ReactNode> = {
         d="M12 7.5l4 2.9-1.5 4.6h-5L8 10.4l4-2.9Z"
         stroke="currentColor"
         strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </>
+  ),
+  trophy: (
+    <>
+      <path
+        d="M7 4h10v3a5 5 0 0 1-10 0V4Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 5H4.5v1.5A2.5 2.5 0 0 0 7 9M17 5h2.5v1.5A2.5 2.5 0 0 1 17 9M9.5 13.5h5M12 12v1.5M9 20h6M10 17h4l.5 3h-5l.5-3Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </>

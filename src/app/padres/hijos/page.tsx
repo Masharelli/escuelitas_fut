@@ -24,7 +24,7 @@ export default async function MisHijosPage() {
           description="Pide a tu escuela que registre a tu hijo con este mismo correo y aparecerá aquí automáticamente."
         />
       ) : (
-        <ChildrenGrid children={children} />
+        <ChildrenGrid kids={children} />
       )}
     </div>
   );

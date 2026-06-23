@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
-import { and, eq } from "drizzle-orm";
 
-import { db } from "@/db";
-import { students as studentsTable } from "@/db/schema";
-import { getActiveMembership } from "@/lib/tenant";
+import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { tenantDb } from "@/lib/tenant-db";
 import { PageHeader } from "@/components/ui";
 import { StudentForm } from "../../student-form";
 import { getFormOptions } from "../../options";
@@ -15,14 +13,9 @@ export default async function EditarAlumnoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { membership } = await getActiveMembership();
+  const { membership } = await requireRole(ADMIN_ROLES);
 
-  const student = await db.query.students.findFirst({
-    where: and(
-      eq(studentsTable.id, id),
-      eq(studentsTable.schoolId, membership.schoolId)
-    ),
-  });
+  const student = await tenantDb(membership.schoolId).students.findById(id);
   if (!student) notFound();
 
   const { categories, teams } = await getFormOptions(membership.schoolId);

@@ -5,7 +5,6 @@ import {
   guardianInvitations,
   guardianships,
   memberships,
-  students,
 } from "@/db/schema";
 
 /**

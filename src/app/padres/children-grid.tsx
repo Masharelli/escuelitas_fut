@@ -11,10 +11,10 @@ type Child = {
   tenant?: { name: string } | null;
 };
 
-export function ChildrenGrid({ children }: { children: Child[] }) {
+export function ChildrenGrid({ kids }: { kids: Child[] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {children.map((c) => (
+      {kids.map((c) => (
         <Link
           key={c.id}
           href={`/padres/hijos/${c.id}`}

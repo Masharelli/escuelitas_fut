@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, asc, count, eq, isNull } from "drizzle-orm";
+import { asc, count, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -7,22 +7,23 @@ import {
   teams as teamsTable,
   students as studentsTable,
 } from "@/db/schema";
-import { getActiveMembership } from "@/lib/tenant";
+import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { tenantDb } from "@/lib/tenant-db";
 import { PageHeader, Card } from "@/components/ui";
 import { CreateCategoryForm, CreateTeamForm } from "./forms";
 import { deleteCategory, deleteTeam } from "./actions";
 
 export default async function EquiposPage() {
-  const { membership } = await getActiveMembership();
+  const { membership } = await requireRole(ADMIN_ROLES);
   const schoolId = membership.schoolId;
+  const tdb = tenantDb(schoolId);
 
-  const categories = await db.query.categories.findMany({
-    where: eq(categoriesTable.schoolId, schoolId),
+  const categories = await tdb.categories.findMany({
     with: { teams: true },
     orderBy: [asc(categoriesTable.name)],
   });
-  const looseTeams = await db.query.teams.findMany({
-    where: and(eq(teamsTable.schoolId, schoolId), isNull(teamsTable.categoryId)),
+  const looseTeams = await tdb.teams.findMany({
+    where: isNull(teamsTable.categoryId),
     orderBy: [asc(teamsTable.name)],
   });
 
@@ -30,7 +31,7 @@ export default async function EquiposPage() {
   const counts = await db
     .select({ teamId: studentsTable.teamId, value: count() })
     .from(studentsTable)
-    .where(eq(studentsTable.schoolId, schoolId))
+    .where(tdb.students.scope())
     .groupBy(studentsTable.teamId);
   const countByTeam = new Map(
     counts.map((c) => [c.teamId, c.value] as const)

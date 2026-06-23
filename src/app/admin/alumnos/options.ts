@@ -1,16 +1,15 @@
-import { asc, eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 
-import { db } from "@/db";
 import { categories as categoriesTable, teams as teamsTable } from "@/db/schema";
+import { tenantDb } from "@/lib/tenant-db";
 
 /** Opciones de categoría y equipo para los selects del formulario de alumno. */
 export async function getFormOptions(schoolId: string) {
-  const cats = await db.query.categories.findMany({
-    where: eq(categoriesTable.schoolId, schoolId),
+  const tdb = tenantDb(schoolId);
+  const cats = await tdb.categories.findMany({
     orderBy: [asc(categoriesTable.name)],
   });
-  const tms = await db.query.teams.findMany({
-    where: eq(teamsTable.schoolId, schoolId),
+  const tms = await tdb.teams.findMany({
     with: { category: true },
     orderBy: [asc(teamsTable.name)],
   });
