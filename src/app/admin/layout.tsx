@@ -6,6 +6,7 @@ const NAV: NavItem[] = [
   { href: "/admin/alumnos", label: "Alumnos", icon: "students" },
   { href: "/admin/equipos", label: "Equipos", icon: "teams" },
   { href: "/admin/pagos", label: "Pagos", icon: "payments" },
+  { href: "/admin/finanzas", label: "Finanzas", icon: "finance" },
   { href: "/admin/partidos", label: "Partidos", icon: "matches" },
   { href: "/admin/torneos", label: "Torneos", icon: "trophy" },
   { href: "/admin/escuela", label: "Mi escuela", icon: "school" },

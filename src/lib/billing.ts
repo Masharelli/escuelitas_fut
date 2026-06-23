@@ -50,6 +50,48 @@ export function currentPeriod(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+type ChargeLike = {
+  status: string;
+  amountCents: number;
+  paidAt: Date | null;
+};
+
+export type ChargesSummary = {
+  paidThisMonthCents: number;
+  pendingCents: number;
+  pendingCount: number;
+};
+
+/** Resumen financiero: cobrado en el mes actual, pendiente total y # pendientes. */
+export function summarizeCharges(
+  rows: ChargeLike[],
+  now: Date
+): ChargesSummary {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  let paidThisMonthCents = 0;
+  let pendingCents = 0;
+  let pendingCount = 0;
+  for (const c of rows) {
+    if (c.status === "pending") {
+      pendingCents += c.amountCents;
+      pendingCount += 1;
+    } else if (c.status === "paid" && c.paidAt) {
+      if (c.paidAt.getFullYear() === y && c.paidAt.getMonth() === m) {
+        paidThisMonthCents += c.amountCents;
+      }
+    }
+  }
+  return { paidThisMonthCents, pendingCents, pendingCount };
+}
+
+/** Suma de lo pendiente en un conjunto de cargos (saldo). */
+export function pendingBalance(rows: ChargeLike[]): number {
+  return rows
+    .filter((c) => c.status === "pending")
+    .reduce((s, c) => s + c.amountCents, 0);
+}
+
 /** Centavos → "$500.00" (MXN por defecto). */
 export function formatMoney(cents: number, currency = "MXN"): string {
   return new Intl.NumberFormat("es-MX", {
