@@ -96,7 +96,7 @@ export default async function PadresPagosPage({
                       {active ? "Pago automático activo" : "Sin pago automático"}
                     </p>
                   </div>
-                  <form action={active ? disableAutopay : enableAutopay}>
+                  <form action={active ? disableAutopay : enableAutopay} className="shrink-0">
                     <input type="hidden" name="studentId" value={c.id} />
                     <button
                       type="submit"
@@ -173,7 +173,7 @@ function ChargeRow({
   const overdue = isOverdue(charge);
   return (
     <li
-      className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 shadow-sm ${
+      className={`flex flex-col gap-3 rounded-xl border px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between ${
         overdue
           ? "border-red-200 bg-red-50/60"
           : highlight
@@ -191,8 +191,8 @@ function ChargeRow({
             : ""}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-3">
-        <div className="flex flex-col items-end gap-1">
+      <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+        <div className="flex flex-col items-start gap-1 sm:items-end">
           <span className="font-display font-bold text-ink">
             {formatMoney(charge.amountCents, charge.currency)}
           </span>

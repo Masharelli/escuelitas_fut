@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
+import { notifyChargePaidById } from "@/lib/billing";
 import { safeNext } from "@/lib/safe-next";
 
 /** Revalida las vistas donde aparecen los cargos (incluye la de origen). */
@@ -23,6 +24,7 @@ export async function markChargePaid(formData: FormData) {
       status: "paid",
       paidAt: new Date(),
     });
+    await notifyChargePaidById(id);
   }
   revalidateCharges(back);
 }

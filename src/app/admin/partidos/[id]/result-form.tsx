@@ -59,8 +59,8 @@ export function ResultForm({
           <p className="mb-2 text-sm font-semibold text-ink">
             Estadísticas de jugadores
           </p>
-          <div className="overflow-hidden rounded-xl border border-ink/10">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-xl border border-ink/10">
+            <table className="w-full min-w-[300px] text-sm">
               <thead className="bg-chalk-deep/60 text-xs text-ink-soft">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Jugador</th>

@@ -224,7 +224,7 @@ export default async function AdminPagosPage({
           {charges.map((c) => (
             <li
               key={c.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm"
+              className="flex flex-col gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <p className="truncate font-semibold text-ink">
@@ -235,7 +235,7 @@ export default async function AdminPagosPage({
                   {c.periodMonth ? ` · ${periodLabel(c.periodMonth)}` : ""}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
                 <StatusBadge status={c.status} />
                 {c.status === "pending" && (
                   <>

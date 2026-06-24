@@ -1,5 +1,7 @@
 import { Wordmark } from "@/components/brand/wordmark";
 import { LogoutButton } from "@/components/logout-button";
+import { NotificationBell } from "@/components/portal/notification-bell";
+import { MobileNav } from "@/components/portal/mobile-nav";
 import { PortalNav, type NavItem } from "@/components/portal/portal-nav";
 import {
   SchoolSwitcher,
@@ -15,6 +17,7 @@ export function PortalShell({
   nav,
   schools,
   activeSchoolId,
+  notifications,
   children,
 }: {
   schoolName: string;
@@ -24,6 +27,8 @@ export function PortalShell({
   /** Escuelas entre las que puede cambiar el usuario en este portal. */
   schools?: SwitchableSchool[];
   activeSchoolId?: string;
+  /** Campana de avisos: ruta de la lista y número de no leídos. */
+  notifications?: { href: string; unread: number };
   children: React.ReactNode;
 }) {
   const canSwitch = !!schools && schools.length > 1 && !!activeSchoolId;
@@ -37,10 +42,16 @@ export function PortalShell({
 
         <div className="mt-6 flex items-center gap-3 rounded-xl bg-chalk-deep/70 px-3 py-2.5">
           <SchoolAvatar name={schoolName} />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-ink">{schoolName}</p>
             <p className="text-xs font-medium text-pitch">{portalLabel}</p>
           </div>
+          {notifications && (
+            <NotificationBell
+              href={notifications.href}
+              unread={notifications.unread}
+            />
+          )}
         </div>
 
         {canSwitch && (
@@ -64,26 +75,16 @@ export function PortalShell({
 
       {/* Contenido */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Barra superior (móvil) */}
-        <header className="flex items-center justify-between border-b border-ink/10 bg-white/70 px-4 py-3 backdrop-blur md:hidden">
-          <Wordmark size="md" />
-          <LogoutButton compact />
-        </header>
-        <div className="border-b border-ink/10 bg-white/40 pt-3 md:hidden">
-          {canSwitch ? (
-            <div className="px-4 pb-2">
-              <SchoolSwitcher schools={schools} activeId={activeSchoolId} />
-              <p className="mt-1.5 text-xs font-medium text-pitch">
-                {portalLabel}
-              </p>
-            </div>
-          ) : (
-            <p className="px-4 pb-2 text-xs font-medium text-pitch">
-              {schoolName} · {portalLabel}
-            </p>
-          )}
-          <PortalNav items={nav} variant="scroller" />
-        </div>
+        {/* Navegación móvil (hamburguesa + panel lateral) */}
+        <MobileNav
+          schoolName={schoolName}
+          portalLabel={portalLabel}
+          userName={userName}
+          nav={nav}
+          schools={schools}
+          activeSchoolId={activeSchoolId}
+          notifications={notifications}
+        />
 
         <main className="flex-1 px-5 py-6 sm:px-8 sm:py-8">{children}</main>
       </div>

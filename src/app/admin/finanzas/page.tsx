@@ -155,8 +155,8 @@ export default async function FinanzasPage({
       {/* Todos los cargos + filtros */}
       <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
         <h2 className="font-display text-lg font-bold">Cargos</h2>
-        <div className="flex items-end gap-2">
-          <form method="get" className="flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2">
+          <form method="get" className="flex flex-wrap items-end gap-2">
             {q && <input type="hidden" name="q" value={q} />}
             <label className="text-xs text-ink-soft">
               <span className="mb-1 block">Mes</span>
@@ -206,12 +206,12 @@ export default async function FinanzasPage({
           {filtered.slice(0, 200).map((c) => (
             <li
               key={c.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm"
+              className="flex flex-col gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <Link
                   href={`/admin/finanzas/${c.studentId}`}
-                  className="truncate font-semibold text-ink hover:text-pitch"
+                  className="block truncate font-semibold text-ink hover:text-pitch"
                 >
                   {c.student.firstName} {c.student.lastName}
                 </Link>
@@ -220,7 +220,7 @@ export default async function FinanzasPage({
                   {c.periodMonth ? ` · ${periodLabel(c.periodMonth)}` : ""}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
                 <span className="font-display font-bold text-ink">
                   {formatMoney(c.amountCents, c.currency)}
                 </span>

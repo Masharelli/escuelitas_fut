@@ -14,7 +14,7 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
+      <div className="min-w-0">
         {eyebrow && (
           <p className="text-sm font-medium text-pitch">{eyebrow}</p>
         )}

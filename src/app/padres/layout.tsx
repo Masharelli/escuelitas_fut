@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { claimStudentsByEmail } from "@/lib/guardians";
 import { getActiveMembership } from "@/lib/tenant";
+import { getUnreadCount } from "@/lib/notifications";
 import { PortalShell, type NavItem } from "@/components/portal-shell";
 
 const NAV: NavItem[] = [
@@ -22,6 +23,7 @@ export default async function PadresLayout({
   }
 
   const { session: active, membership, all } = await getActiveMembership();
+  const unread = await getUnreadCount(active.user.id);
 
   return (
     <PortalShell
@@ -31,6 +33,7 @@ export default async function PadresLayout({
       nav={NAV}
       schools={all.map((m) => ({ id: m.schoolId, name: m.school.name }))}
       activeSchoolId={membership.schoolId}
+      notifications={{ href: "/padres/avisos", unread }}
     >
       {children}
     </PortalShell>

@@ -13,6 +13,8 @@ import { tenantDb } from "@/lib/tenant-db";
 import { getStripe, chargeAutopayForPeriod } from "@/lib/stripe";
 import {
   generateMonthlyCharges,
+  notifyChargesCreated,
+  notifyChargePaidById,
   pesosToCents,
   type ChargeKind,
 } from "@/lib/billing";
@@ -216,7 +218,7 @@ export async function createOneOffCharge(
     return { error: "No hay alumnos activos para ese destino" };
   }
 
-  await tdb.charges.insertManyIgnoringDuplicates(
+  const created = await tdb.charges.insertManyIgnoringDuplicates(
     targets.map((s) => ({
       studentId: s.id,
       planId: null,
@@ -226,8 +228,10 @@ export async function createOneOffCharge(
       periodMonth: null,
     }))
   );
+  await notifyChargesCreated(membership.schoolId, created);
 
   revalidatePath("/admin/pagos");
+  revalidatePath("/admin/finanzas");
   return { ok: true };
 }
 
@@ -239,6 +243,7 @@ export async function markChargePaid(formData: FormData) {
       status: "paid",
       paidAt: new Date(),
     });
+    await notifyChargePaidById(id);
   }
   revalidatePath("/admin/pagos");
 }

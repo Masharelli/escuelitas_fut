@@ -3,6 +3,11 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { charges, guardianships, plans, students, schools } from "@/db/schema";
 import { tenantDb } from "@/lib/tenant-db";
+import {
+  guardiansOfStudents,
+  notifyStudentGuardians,
+  notifyUsers,
+} from "@/lib/notifications";
 
 export type ChargeKind = "monthly" | "enrollment" | "event" | "product";
 
@@ -195,10 +200,69 @@ export async function generateMonthlyCharges(
     }
   }
 
-  await tdb.charges.insertManyIgnoringDuplicates(rows);
-  // Devolvemos el total objetivo; los duplicados se ignoran en la inserción y
-  // la UI relee el estado real al recargar.
-  return rows.length;
+  const created = await tdb.charges.insertManyIgnoringDuplicates(rows);
+  // Avisa a los tutores SOLO de las cuotas nuevas (no de duplicados omitidos).
+  await notifyChargesCreated(schoolId, created);
+  return created.length;
+}
+
+type CreatedCharge = {
+  studentId: string;
+  description: string;
+  amountCents: number;
+  currency: string;
+  dueDate: string | null;
+};
+
+/**
+ * Avisa a los tutores de cada cargo recién creado. Agrupa por mensaje (los
+ * alumnos del mismo plan/monto comparten texto) para emitir pocos avisos en
+ * lote en vez de uno por alumno.
+ */
+export async function notifyChargesCreated(
+  schoolId: string,
+  created: CreatedCharge[]
+): Promise<void> {
+  if (created.length === 0) return;
+  const byStudent = await guardiansOfStudents(created.map((c) => c.studentId));
+
+  const groups = new Map<string, { body: string; studentIds: string[] }>();
+  for (const c of created) {
+    const due = c.dueDate ? ` · vence el ${formatDueDate(c.dueDate)}` : "";
+    const body = `${c.description} · ${formatMoney(c.amountCents, c.currency)}${due}`;
+    const g = groups.get(body) ?? { body, studentIds: [] };
+    g.studentIds.push(c.studentId);
+    groups.set(body, g);
+  }
+
+  for (const g of groups.values()) {
+    const recipients = g.studentIds.flatMap((id) => byStudent.get(id) ?? []);
+    await notifyUsers(recipients, {
+      schoolId,
+      type: "charge_created",
+      title: "Nueva cuota por pagar",
+      body: g.body,
+      link: "/padres/pagos",
+    });
+  }
+}
+
+/**
+ * Recibo de pago a los tutores del alumno. Recibe el id del cargo, lo lee y
+ * avisa. Best-effort: si el cargo no existe, no hace nada.
+ */
+export async function notifyChargePaidById(chargeId: string): Promise<void> {
+  const c = await db.query.charges.findFirst({
+    where: eq(charges.id, chargeId),
+  });
+  if (!c) return;
+  await notifyStudentGuardians(c.studentId, {
+    schoolId: c.schoolId,
+    type: "charge_paid",
+    title: "Pago recibido",
+    body: `${c.description} · ${formatMoney(c.amountCents, c.currency)}`,
+    link: "/padres/pagos",
+  });
 }
 
 /**

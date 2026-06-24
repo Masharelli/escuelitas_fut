@@ -46,7 +46,7 @@ export function CreateTournamentForm({ categories }: { categories: Option[] }) {
         options={categories}
         placeholder={categories.length ? "Cualquier categoría" : "Crea una categoría primero"}
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-sm font-medium text-ink">Inicia (opcional)</span>
           <input type="date" name="startsOn" className={dateInput} />

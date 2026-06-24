@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { schools, charges, guardianships, autopay } from "@/db/schema";
+import { notifyChargePaidById } from "@/lib/billing";
 
 let client: Stripe | null = null;
 
@@ -88,6 +89,7 @@ export async function confirmCheckoutForUser(
             : null,
       })
       .where(eq(charges.id, charge.id));
+    await notifyChargePaidById(charge.id);
     return true;
   }
   return false;
@@ -210,6 +212,7 @@ export async function chargeAutopayForPeriod(
           .update(charges)
           .set({ status: "paid", paidAt: new Date(), stripePaymentIntentId: pi.id })
           .where(eq(charges.id, r.chargeId));
+        await notifyChargePaidById(r.chargeId);
         charged += 1;
       }
     } catch {

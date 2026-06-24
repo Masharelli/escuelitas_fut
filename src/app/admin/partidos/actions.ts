@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
+import { guardiansOfTeam, notifyUsers } from "@/lib/notifications";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -113,6 +114,28 @@ export async function saveResult(
     .filter((r) => r.goals > 0 || r.assists > 0);
 
   await tdb.matchPlayerStats.replaceForMatch(matchId, rows);
+
+  // Avisa a los tutores del equipo que ya hay resultado.
+  const team = await tdb.teams.findById(match.teamId);
+  const recipients = await guardiansOfTeam(match.teamId);
+  if (team && recipients.length > 0) {
+    const outcome =
+      ourScore > opponentScore
+        ? "Victoria"
+        : ourScore < opponentScore
+          ? "Derrota"
+          : "Empate";
+    const scoreline = match.isHome
+      ? `${team.name} ${ourScore}-${opponentScore} ${match.opponentName}`
+      : `${match.opponentName} ${opponentScore}-${ourScore} ${team.name}`;
+    await notifyUsers(recipients, {
+      schoolId: membership.schoolId,
+      type: "match_result",
+      title: `${outcome}: ${scoreline}`,
+      body: `Ya está disponible el resultado del partido de ${team.name}.`,
+      link: "/padres/partidos",
+    });
+  }
 
   revalidatePath(`/admin/partidos/${matchId}`);
   revalidatePath("/admin/partidos");

@@ -87,17 +87,19 @@ export function tenantDb(schoolId: string) {
       /**
        * Inserta varios cargos inyectando el schoolId; ignora los que choquen
        * con el índice único (mismo alumno/plan/periodo) — idempotente para
-       * "generar cargos del mes".
+       * "generar cargos del mes". Devuelve SOLO los cargos realmente creados
+       * (los duplicados se omiten), útil para notificar únicamente lo nuevo.
        */
-      insertManyIgnoringDuplicates: (
+      insertManyIgnoringDuplicates: async (
         rows: Omit<typeof charges.$inferInsert, "schoolId">[]
-      ) =>
+      ): Promise<(typeof charges.$inferSelect)[]> =>
         rows.length
           ? db
               .insert(charges)
               .values(rows.map((r) => ({ ...r, schoolId })))
               .onConflictDoNothing()
-          : Promise.resolve(),
+              .returning()
+          : [],
     },
     tournaments: {
       ...makeReads(db.query.tournaments, tournaments, schoolId),

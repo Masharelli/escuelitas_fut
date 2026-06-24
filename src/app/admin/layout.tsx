@@ -1,4 +1,5 @@
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { getUnreadCount } from "@/lib/notifications";
 import { PortalShell, type NavItem } from "@/components/portal-shell";
 
 const NAV: NavItem[] = [
@@ -18,6 +19,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const { session, membership, candidates } = await requireRole(ADMIN_ROLES);
+  const unread = await getUnreadCount(session.user.id);
 
   return (
     <PortalShell
@@ -27,6 +29,7 @@ export default async function AdminLayout({
       nav={NAV}
       schools={candidates.map((m) => ({ id: m.schoolId, name: m.school.name }))}
       activeSchoolId={membership.schoolId}
+      notifications={{ href: "/admin/avisos", unread }}
     >
       {children}
     </PortalShell>

@@ -120,38 +120,8 @@ function isActive(pathname: string, href: string) {
   return isPortalRoot ? pathname === href : pathname.startsWith(href);
 }
 
-export function PortalNav({
-  items,
-  variant = "sidebar",
-}: {
-  items: NavItem[];
-  variant?: "sidebar" | "scroller";
-}) {
+export function PortalNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
-
-  if (variant === "scroller") {
-    return (
-      <nav className="flex gap-2 overflow-x-auto px-4 pb-3 md:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((item) => {
-          const active = isActive(pathname, item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                active
-                  ? "border-pitch bg-pitch text-chalk"
-                  : "border-ink/10 bg-white text-ink-soft hover:text-ink"
-              }`}
-            >
-              <Glyph icon={item.icon} />
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-    );
-  }
 
   return (
     <nav className="flex flex-col gap-1">
