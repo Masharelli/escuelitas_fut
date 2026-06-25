@@ -25,7 +25,23 @@ export const membershipRole = pgEnum("membership_role", [
   "parent",
 ]);
 
-/** Una escuela = un tenant. Todo dato de dominio se aísla por `schoolId`. */
+/**
+ * Tipo de organización (tenant). El mismo producto sirve dos modelos:
+ *  - academy: escuela/academia dueña de sus categorías y alumnos (mensualidades)
+ *  - league : liga que registra equipos independientes y organiza una temporada
+ * Las escuelitas existentes quedan como `academy` (default).
+ */
+export const orgKind = pgEnum("org_kind", ["academy", "league"]);
+
+/** Deporte de la organización; configura estadísticas y regla de tabla. */
+export const sportEnum = pgEnum("sport", [
+  "futbol",
+  "beisbol",
+  "softbol",
+  "basquetbol",
+]);
+
+/** Una organización = un tenant. Todo dato de dominio se aísla por `schoolId`. */
 export const schools = pgTable("schools", {
   id: text("id")
     .primaryKey()
@@ -33,6 +49,10 @@ export const schools = pgTable("schools", {
   name: text("name").notNull(),
   // slug único para URLs/subdominios (ej. /e/aguilas-fc)
   slug: text("slug").unique().notNull(),
+  // Modelo de la organización y su deporte (multideporte / ligas). Las
+  // escuelitas existentes quedan como academy + futbol por defecto.
+  kind: orgKind("kind").notNull().default("academy"),
+  sport: sportEnum("sport").notNull().default("futbol"),
   logoUrl: text("logo_url"),
   // Perfil de la escuela (editable por el admin en Fase 1)
   description: text("description"),

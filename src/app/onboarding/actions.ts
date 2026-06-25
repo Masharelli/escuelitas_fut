@@ -8,11 +8,14 @@ import { db } from "@/db";
 import { schools, memberships } from "@/db/schema";
 import { requireAuth } from "@/lib/tenant";
 import { slugify } from "@/lib/slug";
+import { SPORTS } from "@/lib/sports";
 
 export type ActionState = { error?: string } | undefined;
 
 const schoolSchema = z.object({
-  name: z.string().min(2, "Escribe el nombre de la escuela"),
+  name: z.string().min(2, "Escribe el nombre"),
+  kind: z.enum(["academy", "league"]).default("academy"),
+  sport: z.enum(SPORTS as [string, ...string[]]).default("futbol"),
 });
 
 /** Genera un slug único agregando un sufijo numérico si ya existe. */
@@ -35,7 +38,11 @@ export async function createSchool(
 ): Promise<ActionState> {
   const session = await requireAuth();
 
-  const parsed = schoolSchema.safeParse({ name: formData.get("name") });
+  const parsed = schoolSchema.safeParse({
+    name: formData.get("name"),
+    kind: formData.get("kind") ?? "academy",
+    sport: formData.get("sport") ?? "futbol",
+  });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
@@ -44,7 +51,12 @@ export async function createSchool(
 
   const [school] = await db
     .insert(schools)
-    .values({ name: parsed.data.name, slug })
+    .values({
+      name: parsed.data.name,
+      slug,
+      kind: parsed.data.kind,
+      sport: parsed.data.sport as (typeof SPORTS)[number],
+    })
     .returning();
 
   await db.insert(memberships).values({

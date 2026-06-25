@@ -11,6 +11,10 @@ import {
   teams,
   tournaments,
   tournamentStandings,
+  seasons,
+  leagueTeams,
+  seasonTeams,
+  rosterPlayers,
 } from "@/db/schema";
 
 /**
@@ -141,6 +145,49 @@ export function tenantDb(schoolId: string) {
       deleteById: (id: string) =>
         db.delete(tournamentStandings).where(rowIn(tournamentStandings, id, schoolId)),
     },
+    seasons: {
+      ...makeReads(db.query.seasons, seasons, schoolId),
+      insert: (values: Omit<typeof seasons.$inferInsert, "schoolId">) =>
+        db.insert(seasons).values({ ...values, schoolId }),
+      updateById: (id: string, values: Partial<typeof seasons.$inferInsert>) =>
+        db.update(seasons).set(values).where(rowIn(seasons, id, schoolId)),
+      deleteById: (id: string) =>
+        db.delete(seasons).where(rowIn(seasons, id, schoolId)),
+    },
+    leagueTeams: {
+      ...makeReads(db.query.leagueTeams, leagueTeams, schoolId),
+      insert: (values: Omit<typeof leagueTeams.$inferInsert, "schoolId">) =>
+        db.insert(leagueTeams).values({ ...values, schoolId }),
+      updateById: (
+        id: string,
+        values: Partial<typeof leagueTeams.$inferInsert>
+      ) =>
+        db.update(leagueTeams).set(values).where(rowIn(leagueTeams, id, schoolId)),
+      deleteById: (id: string) =>
+        db.delete(leagueTeams).where(rowIn(leagueTeams, id, schoolId)),
+    },
+    rosterPlayers: {
+      ...makeReads(db.query.rosterPlayers, rosterPlayers, schoolId),
+      insert: (values: Omit<typeof rosterPlayers.$inferInsert, "schoolId">) =>
+        db.insert(rosterPlayers).values({ ...values, schoolId }),
+      updateById: (
+        id: string,
+        values: Partial<typeof rosterPlayers.$inferInsert>
+      ) =>
+        db
+          .update(rosterPlayers)
+          .set(values)
+          .where(rowIn(rosterPlayers, id, schoolId)),
+      deleteById: (id: string) =>
+        db.delete(rosterPlayers).where(rowIn(rosterPlayers, id, schoolId)),
+    },
+    seasonTeams: {
+      ...makeReads(db.query.seasonTeams, seasonTeams, schoolId),
+      insert: (values: Omit<typeof seasonTeams.$inferInsert, "schoolId">) =>
+        db.insert(seasonTeams).values({ ...values, schoolId }),
+      deleteById: (id: string) =>
+        db.delete(seasonTeams).where(rowIn(seasonTeams, id, schoolId)),
+    },
     matchPlayerStats: {
       ...makeReads(db.query.matchPlayerStats, matchPlayerStats, schoolId),
       /** Reemplaza las estadísticas de un partido (borra y reinserta). */
@@ -178,7 +225,11 @@ type TenantTable =
   | typeof tournaments
   | typeof matches
   | typeof matchPlayerStats
-  | typeof tournamentStandings;
+  | typeof tournamentStandings
+  | typeof seasons
+  | typeof leagueTeams
+  | typeof seasonTeams
+  | typeof rosterPlayers;
 
 /** `id` + escuela: para localizar/escribir una fila concreta sin fuga. */
 function rowIn(table: TenantTable, id: string, schoolId: string) {
