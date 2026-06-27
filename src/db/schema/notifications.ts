@@ -25,6 +25,7 @@ export const notificationType = pgEnum("notification_type", [
   "charge_overdue", // cuota vencida (cron)
   "match_upcoming", // partido próximo (cron)
   "match_result", // resultado publicado
+  "session_upcoming", // entrenamiento/evento próximo o recién programado
   "general", // aviso libre del administrador
 ]);
 

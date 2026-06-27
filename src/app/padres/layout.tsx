@@ -9,6 +9,7 @@ const NAV: NavItem[] = [
   { href: "/padres/hijos", label: "Mis hijos", icon: "kids" },
   { href: "/padres/pagos", label: "Pagos", icon: "payments" },
   { href: "/padres/partidos", label: "Partidos", icon: "matches" },
+  { href: "/padres/entrenamientos", label: "Entrenamientos", icon: "calendar" },
 ];
 
 export default async function PadresLayout({

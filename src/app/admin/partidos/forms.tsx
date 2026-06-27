@@ -62,6 +62,18 @@ export function CreateMatchForm({
         placeholder="Ej. Unidad Deportiva Tonalá"
         required={false}
       />
+      <TextField
+        label="Enlace de ubicación (opcional)"
+        name="mapUrl"
+        placeholder="Pega un enlace de Google Maps"
+        required={false}
+      />
+      <TextField
+        label="Uniforme requerido (opcional)"
+        name="requiredUniform"
+        placeholder="Ej. Jersey blanco, short azul"
+        required={false}
+      />
       {tournaments.length > 0 && (
         <SelectField
           label="Torneo (opcional)"

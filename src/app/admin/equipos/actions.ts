@@ -7,6 +7,11 @@ import { z } from "zod";
 import { categories } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
+import {
+  createStaffInvitation,
+  revokeStaffInvitation,
+} from "@/lib/staff-invitations";
+import { removeCoachTeam } from "@/lib/coach";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -103,4 +108,41 @@ export async function deleteTeam(formData: FormData) {
     await tenantDb(membership.schoolId).teams.deleteById(id);
   }
   revalidatePath("/admin/equipos");
+}
+
+/** Genera un enlace de invitación de entrenador para un equipo. */
+export async function inviteCoach(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { membership } = await requireRole(ADMIN_ROLES);
+  const teamId = String(formData.get("teamId") ?? "");
+  const email = String(formData.get("email") ?? "");
+  if (!teamId) return { error: "Equipo inválido" };
+
+  const tdb = tenantDb(membership.schoolId);
+  const team = await tdb.teams.findById(teamId);
+  if (!team) return { error: "Equipo inválido" };
+
+  await createStaffInvitation(membership.schoolId, teamId, email || null);
+  revalidatePath(`/admin/equipos/${teamId}`);
+  return { ok: true };
+}
+
+/** Revoca una invitación de entrenador pendiente. */
+export async function revokeCoachInvitation(formData: FormData) {
+  const { membership } = await requireRole(ADMIN_ROLES);
+  const id = String(formData.get("id") ?? "");
+  const teamId = String(formData.get("teamId") ?? "");
+  if (id) await revokeStaffInvitation(id, membership.schoolId);
+  if (teamId) revalidatePath(`/admin/equipos/${teamId}`);
+}
+
+/** Quita a un entrenador de un equipo. */
+export async function unassignCoach(formData: FormData) {
+  const { membership } = await requireRole(ADMIN_ROLES);
+  const id = String(formData.get("id") ?? "");
+  const teamId = String(formData.get("teamId") ?? "");
+  if (id) await removeCoachTeam(id, membership.schoolId);
+  if (teamId) revalidatePath(`/admin/equipos/${teamId}`);
 }

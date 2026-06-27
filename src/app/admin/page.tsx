@@ -131,8 +131,8 @@ async function LeagueHome({
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={<TeamsIcon />} label="Equipos" value={String(teamCount)} href="/admin/liga/equipos" />
         <StatCard icon={<TrophyIcon />} label="Temporadas" value={String(seasonCount)} href="/admin/liga/temporadas" />
-        <StatCard icon={<MatchesIcon />} label="Calendario" value="—" hint="Próximamente (L3)" />
-        <StatCard icon={<PaymentsIcon />} label="Inscripciones" value="—" hint="Próximamente (L4)" />
+        <StatCard icon={<MatchesIcon />} label="Calendario" value="✓" hint="En cada temporada" href="/admin/liga/temporadas" />
+        <StatCard icon={<PaymentsIcon />} label="Inscripciones" value="✓" hint="Por temporada" href="/admin/liga/temporadas" />
       </div>
 
       <div className="mt-6 rounded-2xl border border-pitch/20 bg-pitch/[0.06] p-6">

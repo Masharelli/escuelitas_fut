@@ -10,6 +10,9 @@ type Player = {
   name: string;
   goals: number;
   assists: number;
+  yellowCards: number;
+  redCards: number;
+  minutesPlayed: number;
 };
 
 const numInput =
@@ -60,19 +63,22 @@ export function ResultForm({
             Estadísticas de jugadores
           </p>
           <div className="overflow-x-auto rounded-xl border border-ink/10">
-            <table className="w-full min-w-[300px] text-sm">
+            <table className="w-full min-w-[460px] text-sm">
               <thead className="bg-chalk-deep/60 text-xs text-ink-soft">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Jugador</th>
-                  <th className="px-3 py-2 text-center font-medium">Goles</th>
-                  <th className="px-3 py-2 text-center font-medium">Asist.</th>
+                  <th className="px-2 py-2 text-center font-medium">Goles</th>
+                  <th className="px-2 py-2 text-center font-medium">Asist.</th>
+                  <th className="px-2 py-2 text-center font-medium" title="Tarjetas amarillas">🟨</th>
+                  <th className="px-2 py-2 text-center font-medium" title="Tarjetas rojas">🟥</th>
+                  <th className="px-2 py-2 text-center font-medium">Min.</th>
                 </tr>
               </thead>
               <tbody>
                 {players.map((p) => (
                   <tr key={p.id} className="border-t border-ink/10">
                     <td className="px-3 py-2 text-ink">{p.name}</td>
-                    <td className="px-3 py-2 text-center">
+                    <td className="px-2 py-2 text-center">
                       <input
                         type="number"
                         min={0}
@@ -81,12 +87,42 @@ export function ResultForm({
                         className={numInput}
                       />
                     </td>
-                    <td className="px-3 py-2 text-center">
+                    <td className="px-2 py-2 text-center">
                       <input
                         type="number"
                         min={0}
                         name={`assists_${p.id}`}
                         defaultValue={p.assists}
+                        className={numInput}
+                      />
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={2}
+                        name={`yellow_${p.id}`}
+                        defaultValue={p.yellowCards}
+                        className={numInput}
+                      />
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={1}
+                        name={`red_${p.id}`}
+                        defaultValue={p.redCards}
+                        className={numInput}
+                      />
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={200}
+                        name={`min_${p.id}`}
+                        defaultValue={p.minutesPlayed}
                         className={numInput}
                       />
                     </td>

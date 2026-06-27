@@ -5,8 +5,10 @@ import { students as studentsTable } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { getStudentInvitations, getLinkedGuardians } from "@/lib/invitations";
+import { getStudentStats } from "@/lib/stats";
 import { PageHeader, SecondaryLink } from "@/components/ui";
 import { StudentDetail } from "@/components/student-detail";
+import { StudentStats } from "@/components/student-stats";
 import { GuardianInvite } from "../guardian-invite";
 
 export default async function AlumnoFichaPage({
@@ -23,9 +25,10 @@ export default async function AlumnoFichaPage({
   });
   if (!student) notFound();
 
-  const [invitations, linked] = await Promise.all([
+  const [invitations, linked, stats] = await Promise.all([
     getStudentInvitations(id),
     getLinkedGuardians(id),
+    getStudentStats(membership.schoolId, id),
   ]);
 
   return (
@@ -59,6 +62,10 @@ export default async function AlumnoFichaPage({
       </div>
 
       <StudentDetail student={student} />
+
+      <div className="mt-5">
+        <StudentStats stats={stats} />
+      </div>
     </div>
   );
 }

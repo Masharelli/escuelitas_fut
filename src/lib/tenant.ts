@@ -8,8 +8,15 @@ import { memberships } from "@/db/schema";
 
 export type Role = "owner" | "admin" | "coach" | "parent";
 
-/** Roles que tienen acceso al portal de administración. */
-export const ADMIN_ROLES: Role[] = ["owner", "admin", "coach"];
+/** Roles con acceso al portal de administración (panel completo de la escuela). */
+export const ADMIN_ROLES: Role[] = ["owner", "admin"];
+
+/**
+ * Roles "staff": pueden operar partidos/sesiones/convocatorias. Incluye al
+ * entrenador, que además queda acotado a sus equipos (ver `assertTeamAccess`
+ * en src/lib/coach.ts).
+ */
+export const STAFF_ROLES: Role[] = ["owner", "admin", "coach"];
 
 /** Cookie con la escuela activa elegida por el usuario (multi-escuela). */
 export const ACTIVE_SCHOOL_COOKIE = "active_school";

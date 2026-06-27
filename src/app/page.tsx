@@ -17,10 +17,11 @@ export default async function HomePage() {
 
     const mine = await getMyMemberships(session.user.id);
     if (mine.length === 0) redirect("/onboarding");
-    // Si es admin/owner/coach en alguna escuela, va al panel; si solo es padre,
-    // al portal de padres.
+    // Enruta según el rol: admin/owner → panel; entrenador → su portal; el
+    // resto (padres) → portal de padres.
     const hasAdmin = mine.some((m) => ADMIN_ROLES.includes(m.role as Role));
-    redirect(hasAdmin ? "/admin" : "/padres");
+    const isCoach = mine.some((m) => m.role === "coach");
+    redirect(hasAdmin ? "/admin" : isCoach ? "/coach" : "/padres");
   }
 
   return (

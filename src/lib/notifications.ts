@@ -11,6 +11,7 @@ export type NotificationType =
   | "charge_overdue"
   | "match_upcoming"
   | "match_result"
+  | "session_upcoming"
   | "general";
 
 export type NotifyPayload = {

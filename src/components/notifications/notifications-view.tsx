@@ -12,6 +12,7 @@ const TYPE_ACCENT: Record<NotificationType, string> = {
   charge_overdue: "bg-red-500",
   match_upcoming: "bg-sky-500",
   match_result: "bg-pitch",
+  session_upcoming: "bg-sky-500",
   general: "bg-ink/30",
 };
 

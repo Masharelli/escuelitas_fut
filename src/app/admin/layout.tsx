@@ -20,6 +20,8 @@ function buildNav(kind: string, settingsLabel: string): NavItem[] {
     { href: "/admin/pagos", label: "Pagos", icon: "payments" },
     { href: "/admin/finanzas", label: "Finanzas", icon: "finance" },
     { href: "/admin/partidos", label: "Partidos", icon: "matches" },
+    { href: "/admin/calendario", label: "Calendario", icon: "calendar" },
+    { href: "/admin/asistencias", label: "Asistencias", icon: "attendance" },
     { href: "/admin/torneos", label: "Torneos", icon: "trophy" },
     { href: "/admin/escuela", label: settingsLabel, icon: "school" },
   ];

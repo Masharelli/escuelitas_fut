@@ -7,6 +7,7 @@ import {
   memberships,
   matches,
   tournaments,
+  trainingSessions,
   autopay,
 } from "@/db/schema";
 
@@ -79,6 +80,30 @@ export async function getMyChildrenMatches(userId: string) {
 }
 
 /**
+ * Entrenamientos / eventos de los equipos de los hijos del usuario (más
+ * recientes primero). Misma frontera que los partidos: solo ve sesiones de los
+ * equipos donde juegan sus hijos.
+ */
+export async function getMyChildrenSessions(userId: string) {
+  const links = await db.query.guardianships.findMany({
+    where: eq(guardianships.userId, userId),
+    with: { student: { columns: { teamId: true } } },
+  });
+  const teamIds = [
+    ...new Set(
+      links.map((l) => l.student.teamId).filter((id): id is string => !!id)
+    ),
+  ];
+  if (teamIds.length === 0) return [];
+
+  return db.query.trainingSessions.findMany({
+    where: inArray(trainingSessions.teamId, teamIds),
+    with: { team: true },
+    orderBy: [desc(trainingSessions.startsAt)],
+  });
+}
+
+/**
  * Torneos (con su tabla de posiciones) en los que juegan los equipos de los
  * hijos del usuario. Para mostrar la tabla a los padres en modo lectura.
  */
@@ -125,6 +150,27 @@ export async function getMyChildrenAutopay(userId: string) {
     where: inArray(autopay.studentId, ids),
   });
   return new Map(rows.map((r) => [r.studentId, r.status] as const));
+}
+
+/**
+ * Tutores (usuarios) de los alumnos de un equipo, sin repetir, para elegir al
+ * "papá estadístico" de un partido. Devuelve [{ id, name, email }].
+ */
+export async function getTeamGuardianUsers(teamId: string) {
+  const roster = await db.query.students.findMany({
+    where: eq(students.teamId, teamId),
+    columns: { id: true },
+  });
+  const ids = roster.map((s) => s.id);
+  if (ids.length === 0) return [] as { id: string; name: string | null; email: string | null }[];
+
+  const links = await db.query.guardianships.findMany({
+    where: inArray(guardianships.studentId, ids),
+    with: { user: { columns: { id: true, name: true, email: true } } },
+  });
+  const seen = new Map<string, { id: string; name: string | null; email: string | null }>();
+  for (const l of links) seen.set(l.user.id, l.user);
+  return [...seen.values()];
 }
 
 /** Un hijo específico del usuario (o null si no le pertenece). */

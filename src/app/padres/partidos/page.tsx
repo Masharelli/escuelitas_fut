@@ -3,6 +3,8 @@ import {
   getMyChildrenMatches,
   getMyChildrenTournaments,
 } from "@/lib/guardians";
+import { getMyChildrenCallups, type RsvpStatus } from "@/lib/callups";
+import { RsvpButtons } from "@/components/rsvp-buttons";
 import {
   formatKickoff,
   scoreLabel,
@@ -15,10 +17,27 @@ import { PageHeader, EmptyState } from "@/components/ui";
 
 export default async function PadresPartidosPage() {
   const { session } = await getActiveMembership();
-  const [matches, tournaments] = await Promise.all([
+  const [matches, tournaments, callups] = await Promise.all([
     getMyChildrenMatches(session.user.id),
     getMyChildrenTournaments(session.user.id),
+    getMyChildrenCallups(session.user.id),
   ]);
+
+  // Convocatorias por partido: { callupId, studentName, rsvp } por matchId.
+  const callupsByMatch = new Map<
+    string,
+    { callupId: string; studentName: string; rsvp: RsvpStatus }[]
+  >();
+  for (const c of callups) {
+    if (!c.matchId) continue;
+    const list = callupsByMatch.get(c.matchId) ?? [];
+    list.push({
+      callupId: c.id,
+      studentName: c.student.firstName,
+      rsvp: c.rsvp as RsvpStatus,
+    });
+    callupsByMatch.set(c.matchId, list);
+  }
 
   const tables = tournaments
     .map((t) => ({
@@ -64,7 +83,12 @@ export default async function PadresPartidosPage() {
               <h2 className="mb-3 font-display text-lg font-bold">Próximos</h2>
               <ul className="space-y-2">
                 {upcoming.map((m) => (
-                  <MatchRow key={m.id} match={m} />
+                  <MatchRow
+                    key={m.id}
+                    match={m}
+                    callups={callupsByMatch.get(m.id)}
+                    isScorekeeper={m.scorekeeperUserId === session.user.id}
+                  />
                 ))}
               </ul>
             </section>
@@ -154,13 +178,24 @@ type Row = {
   isHome: boolean;
   kickoffAt: Date;
   location: string | null;
+  mapUrl: string | null;
+  requiredUniform: string | null;
+  scorekeeperUserId: string | null;
   status: string;
   ourScore: number | null;
   opponentScore: number | null;
   team: { name: string };
 };
 
-function MatchRow({ match: m }: { match: Row }) {
+function MatchRow({
+  match: m,
+  callups,
+  isScorekeeper,
+}: {
+  match: Row;
+  callups?: { callupId: string; studentName: string; rsvp: string }[];
+  isScorekeeper?: boolean;
+}) {
   const result = resultOf(m.ourScore, m.opponentScore);
   const tone =
     result === "win"
@@ -170,28 +205,70 @@ function MatchRow({ match: m }: { match: Row }) {
         : "text-ink";
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm">
-      <div className="min-w-0">
-        <p className="truncate font-semibold text-ink">
-          {m.team.name} <span className="text-ink-soft">{m.isHome ? "vs" : "@"}</span>{" "}
-          {m.opponentName}
-        </p>
-        <p className="truncate text-xs text-ink-soft">
-          {formatKickoff(m.kickoffAt)}
-          {m.location ? ` · ${m.location}` : ""}
-        </p>
+    <li className="rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-ink">
+            {m.team.name} <span className="text-ink-soft">{m.isHome ? "vs" : "@"}</span>{" "}
+            {m.opponentName}
+          </p>
+          <p className="truncate text-xs text-ink-soft">
+            {formatKickoff(m.kickoffAt)}
+            {m.location ? ` · ${m.location}` : ""}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          {m.status === "played" ? (
+            <span className={`font-display text-lg font-bold ${tone}`}>
+              {scoreLabel(m.ourScore, m.opponentScore)}
+            </span>
+          ) : (
+            <span className="rounded-full bg-chalk-deep px-2.5 py-0.5 text-xs font-medium text-ink-soft">
+              {MATCH_STATUS_LABELS[m.status as MatchStatus]}
+            </span>
+          )}
+        </div>
       </div>
-      <div className="shrink-0 text-right">
-        {m.status === "played" ? (
-          <span className={`font-display text-lg font-bold ${tone}`}>
-            {scoreLabel(m.ourScore, m.opponentScore)}
-          </span>
-        ) : (
-          <span className="rounded-full bg-chalk-deep px-2.5 py-0.5 text-xs font-medium text-ink-soft">
-            {MATCH_STATUS_LABELS[m.status as MatchStatus]}
-          </span>
-        )}
-      </div>
+      {(m.mapUrl || m.requiredUniform) && (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          {m.mapUrl && (
+            <a
+              href={m.mapUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-pitch hover:underline"
+            >
+              📍 Ver ubicación
+            </a>
+          )}
+          {m.requiredUniform && (
+            <span className="text-ink-soft">👕 {m.requiredUniform}</span>
+          )}
+        </div>
+      )}
+      {isScorekeeper && (
+        <a
+          href={`/estadistico/${m.id}`}
+          className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-pitch hover:underline"
+        >
+          📊 Capturar este partido en vivo →
+        </a>
+      )}
+      {callups && callups.length > 0 && (
+        <div className="mt-3 space-y-1.5 border-t border-ink/10 pt-3">
+          <p className="text-xs font-medium text-ink-soft">
+            Convocado · confirma asistencia
+          </p>
+          {callups.map((c) => (
+            <RsvpButtons
+              key={c.callupId}
+              callupId={c.callupId}
+              rsvp={c.rsvp as RsvpStatus}
+              studentName={c.studentName}
+            />
+          ))}
+        </div>
+      )}
     </li>
   );
 }

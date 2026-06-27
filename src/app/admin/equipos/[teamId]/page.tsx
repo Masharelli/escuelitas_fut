@@ -17,8 +17,11 @@ import {
   MATCH_STATUS_LABELS,
   type MatchStatus,
 } from "@/lib/competition";
+import { getTeamCoaches } from "@/lib/coach";
+import { getTeamStaffInvitations } from "@/lib/staff-invitations";
 import { PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
 import { StudentList } from "@/components/student-list";
+import { CoachAssign } from "./coach-assign";
 
 export default async function EquipoDetallePage({
   params,
@@ -46,6 +49,11 @@ export default async function EquipoDetallePage({
     orderBy: [desc(matchesTable.kickoffAt)],
   });
   const record = teamRecord(matches);
+
+  const [coaches, staffInvitations] = await Promise.all([
+    getTeamCoaches(teamId),
+    getTeamStaffInvitations(teamId),
+  ]);
 
   const ages = students
     .map((s) => (s.birthDate ? ageFromISO(s.birthDate) : null))
@@ -108,6 +116,20 @@ export default async function EquipoDetallePage({
             <Stat label="Puntos" value={String(record.pts)} />
           </>
         )}
+      </div>
+
+      <div className="mb-6">
+        <CoachAssign
+          teamId={team.id}
+          coaches={coaches.map((c) => ({ id: c.id, user: c.user }))}
+          invitations={staffInvitations.map((i) => ({
+            id: i.id,
+            token: i.token,
+            email: i.email,
+            status: i.status,
+            acceptedByName: i.acceptedBy?.name ?? null,
+          }))}
+        />
       </div>
 
       {/* Partidos del equipo */}

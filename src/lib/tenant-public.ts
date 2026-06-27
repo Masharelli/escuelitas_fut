@@ -15,6 +15,8 @@ export async function getSchoolBySlug(slug: string) {
       id: true,
       name: true,
       slug: true,
+      kind: true,
+      sport: true,
       logoUrl: true,
       description: true,
       phone: true,

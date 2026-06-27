@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { schools } from "./tenant";
+import { users } from "./auth";
 import { teams, students, categories } from "./academy";
 
 /**
@@ -86,11 +87,19 @@ export const matches = pgTable("matches", {
   isHome: boolean("is_home").notNull().default(true),
   kickoffAt: timestamp("kickoff_at", { mode: "date" }).notNull(),
   location: text("location"),
+  // Enlace a la ubicación (Google Maps u otro) — "Ubicación GPS" del partido.
+  mapUrl: text("map_url"),
+  // Uniforme requerido (texto libre, ej. "Local: jersey blanco").
+  requiredUniform: text("required_uniform"),
   status: matchStatus("status").notNull().default("scheduled"),
   // Marcador desde NUESTRA perspectiva (null hasta que se juega).
   ourScore: integer("our_score"),
   opponentScore: integer("opponent_score"),
   notes: text("notes"),
+  // "Papá estadístico": tutor designado para capturar el partido en vivo.
+  scorekeeperUserId: text("scorekeeper_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 
@@ -111,6 +120,9 @@ export const matchPlayerStats = pgTable(
       .references(() => students.id, { onDelete: "cascade" }),
     goals: integer("goals").notNull().default(0),
     assists: integer("assists").notNull().default(0),
+    yellowCards: integer("yellow_cards").notNull().default(0),
+    redCards: integer("red_cards").notNull().default(0),
+    minutesPlayed: integer("minutes_played").notNull().default(0),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
   // Una fila de estadística por alumno por partido.

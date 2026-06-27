@@ -7,6 +7,8 @@ import {
   matches,
   matchPlayerStats,
   plans,
+  trainingSessions,
+  attendance,
   students,
   teams,
   tournaments,
@@ -15,6 +17,9 @@ import {
   leagueTeams,
   seasonTeams,
   rosterPlayers,
+  leagueMatches,
+  leagueCharges,
+  leagueMatchStats,
 } from "@/db/schema";
 
 /**
@@ -188,6 +193,89 @@ export function tenantDb(schoolId: string) {
       deleteById: (id: string) =>
         db.delete(seasonTeams).where(rowIn(seasonTeams, id, schoolId)),
     },
+    leagueMatches: {
+      ...makeReads(db.query.leagueMatches, leagueMatches, schoolId),
+      insert: (values: Omit<typeof leagueMatches.$inferInsert, "schoolId">) =>
+        db.insert(leagueMatches).values({ ...values, schoolId }),
+      /** Inserta el calendario completo (varios partidos) inyectando schoolId. */
+      insertMany: (
+        rows: Omit<typeof leagueMatches.$inferInsert, "schoolId">[]
+      ) =>
+        rows.length
+          ? db
+              .insert(leagueMatches)
+              .values(rows.map((r) => ({ ...r, schoolId })))
+          : Promise.resolve(),
+      updateById: (
+        id: string,
+        values: Partial<typeof leagueMatches.$inferInsert>
+      ) =>
+        db
+          .update(leagueMatches)
+          .set(values)
+          .where(rowIn(leagueMatches, id, schoolId)),
+      deleteById: (id: string) =>
+        db.delete(leagueMatches).where(rowIn(leagueMatches, id, schoolId)),
+      /** Borra todo el calendario de una temporada (para regenerarlo). */
+      deleteBySeason: (seasonId: string) =>
+        db
+          .delete(leagueMatches)
+          .where(
+            and(
+              eq(leagueMatches.seasonId, seasonId),
+              eq(leagueMatches.schoolId, schoolId)
+            )
+          ),
+    },
+    leagueMatchStats: {
+      ...makeReads(db.query.leagueMatchStats, leagueMatchStats, schoolId),
+      /** Reemplaza las estadísticas de un partido (borra y reinserta). */
+      replaceForMatch: async (
+        matchId: string,
+        rows: Omit<
+          typeof leagueMatchStats.$inferInsert,
+          "schoolId" | "matchId"
+        >[]
+      ) => {
+        await db
+          .delete(leagueMatchStats)
+          .where(
+            and(
+              eq(leagueMatchStats.matchId, matchId),
+              eq(leagueMatchStats.schoolId, schoolId)
+            )
+          );
+        if (rows.length) {
+          await db
+            .insert(leagueMatchStats)
+            .values(rows.map((r) => ({ ...r, schoolId, matchId })));
+        }
+      },
+    },
+    leagueCharges: {
+      ...makeReads(db.query.leagueCharges, leagueCharges, schoolId),
+      updateById: (
+        id: string,
+        values: Partial<typeof leagueCharges.$inferInsert>
+      ) =>
+        db
+          .update(leagueCharges)
+          .set(values)
+          .where(rowIn(leagueCharges, id, schoolId)),
+      deleteById: (id: string) =>
+        db.delete(leagueCharges).where(rowIn(leagueCharges, id, schoolId)),
+      /** Crea cargos de inscripción ignorando duplicados (idempotente). */
+      insertManyIgnoringDuplicates: async (
+        rows: Omit<typeof leagueCharges.$inferInsert, "schoolId">[]
+      ): Promise<(typeof leagueCharges.$inferSelect)[]> =>
+        rows.length
+          ? db
+              .insert(leagueCharges)
+              .values(rows.map((r) => ({ ...r, schoolId })))
+              .onConflictDoNothing()
+              .returning()
+          : [],
+    },
     matchPlayerStats: {
       ...makeReads(db.query.matchPlayerStats, matchPlayerStats, schoolId),
       /** Reemplaza las estadísticas de un partido (borra y reinserta). */
@@ -213,6 +301,46 @@ export function tenantDb(schoolId: string) {
         }
       },
     },
+    sessions: {
+      ...makeReads(db.query.trainingSessions, trainingSessions, schoolId),
+      insert: (values: Omit<typeof trainingSessions.$inferInsert, "schoolId">) =>
+        db.insert(trainingSessions).values({ ...values, schoolId }),
+      updateById: (
+        id: string,
+        values: Partial<typeof trainingSessions.$inferInsert>
+      ) =>
+        db
+          .update(trainingSessions)
+          .set(values)
+          .where(rowIn(trainingSessions, id, schoolId)),
+      deleteById: (id: string) =>
+        db.delete(trainingSessions).where(rowIn(trainingSessions, id, schoolId)),
+    },
+    attendance: {
+      ...makeReads(db.query.attendance, attendance, schoolId),
+      /** Reemplaza el pase de lista de una sesión (borra y reinserta). */
+      replaceForSession: async (
+        sessionId: string,
+        rows: Omit<
+          typeof attendance.$inferInsert,
+          "schoolId" | "sessionId"
+        >[]
+      ) => {
+        await db
+          .delete(attendance)
+          .where(
+            and(
+              eq(attendance.sessionId, sessionId),
+              eq(attendance.schoolId, schoolId)
+            )
+          );
+        if (rows.length) {
+          await db
+            .insert(attendance)
+            .values(rows.map((r) => ({ ...r, schoolId, sessionId })));
+        }
+      },
+    },
   };
 }
 
@@ -225,11 +353,16 @@ type TenantTable =
   | typeof tournaments
   | typeof matches
   | typeof matchPlayerStats
+  | typeof trainingSessions
+  | typeof attendance
   | typeof tournamentStandings
   | typeof seasons
   | typeof leagueTeams
   | typeof seasonTeams
-  | typeof rosterPlayers;
+  | typeof rosterPlayers
+  | typeof leagueMatches
+  | typeof leagueCharges
+  | typeof leagueMatchStats;
 
 /** `id` + escuela: para localizar/escribir una fila concreta sin fuga. */
 function rowIn(table: TenantTable, id: string, schoolId: string) {
