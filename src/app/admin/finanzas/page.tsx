@@ -2,6 +2,7 @@ import Link from "next/link";
 import { desc, ilike, or, sql } from "drizzle-orm";
 
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { hasFeature } from "@/lib/plan";
 import { tenantDb } from "@/lib/tenant-db";
 import { charges as chargesTable, students as studentsTable } from "@/db/schema";
 import {
@@ -13,6 +14,12 @@ import {
   CHARGE_STATUS_LABELS,
   type ChargeKind,
 } from "@/lib/billing";
+import {
+  financeSummary,
+  profitByCategory,
+  monthOf,
+  type CategoryProfitRow,
+} from "@/lib/finance";
 import { PageHeader } from "@/components/ui";
 import { markChargePaid, cancelCharge } from "./actions";
 
@@ -45,6 +52,20 @@ export default async function FinanzasPage({
   });
 
   const summary = summarizeCharges(charges, new Date());
+
+  // Bloque ejecutivo (Premium): utilidad, margen y rentabilidad por categoría.
+  const showExec = hasFeature(membership.school.plan, "exec_dashboard");
+  const period = monthOf(new Date());
+  let exec: ReturnType<typeof financeSummary> | null = null;
+  let categoryProfit: CategoryProfitRow[] = [];
+  if (showExec) {
+    const [expenses, categories] = await Promise.all([
+      tdb.expenses.findMany(),
+      tdb.categories.findMany(),
+    ]);
+    exec = financeSummary(charges, expenses, period);
+    categoryProfit = profitByCategory(charges, expenses, categories, period);
+  }
 
   // Lista filtrada por mes y estado.
   const filtered = charges.filter((c) => {
@@ -104,6 +125,70 @@ export default async function FinanzasPage({
           value={String(summary.pendingCount)}
         />
       </div>
+
+      {exec && (
+        <section className="mb-8">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-display text-lg font-bold">
+              Dashboard ejecutivo
+            </h2>
+            <a
+              href="/admin/gastos"
+              className="text-sm font-medium text-pitch hover:text-pitch-deep"
+            >
+              Gestionar gastos
+            </a>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <SummaryCard label="Ingresos del mes" value={formatMoney(exec.incomeCents)} tone="pitch" />
+            <SummaryCard label="Gastos del mes" value={formatMoney(exec.expensesCents)} tone="tangerine" />
+            <SummaryCard
+              label="Utilidad del mes"
+              value={formatMoney(exec.profitCents)}
+              tone={exec.profitCents >= 0 ? "pitch" : "tangerine"}
+            />
+            <SummaryCard
+              label="Punto de equilibrio"
+              value={`${exec.coveragePct}%`}
+            />
+          </div>
+
+          {categoryProfit.length > 0 && (
+            <div className="mt-4 overflow-x-auto rounded-2xl border border-ink/10">
+              <table className="w-full min-w-[460px] text-sm">
+                <thead className="bg-chalk-deep/60 text-xs text-ink-soft">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Categoría</th>
+                    <th className="px-3 py-2 text-right font-medium">Ingresos</th>
+                    <th className="px-3 py-2 text-right font-medium">Gastos</th>
+                    <th className="px-3 py-2 text-right font-medium">Utilidad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categoryProfit.map((r) => (
+                    <tr key={r.categoryId ?? "none"} className="border-t border-ink/10">
+                      <td className="px-3 py-2 text-ink">{r.name}</td>
+                      <td className="px-3 py-2 text-right text-pitch">
+                        {formatMoney(r.incomeCents)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-tangerine">
+                        {formatMoney(r.expensesCents)}
+                      </td>
+                      <td
+                        className={`px-3 py-2 text-right font-semibold ${
+                          r.profitCents >= 0 ? "text-ink" : "text-red-600"
+                        }`}
+                      >
+                        {formatMoney(r.profitCents)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Estado de cuenta por alumno */}
       <h2 className="font-display text-lg font-bold">Estado de cuenta por alumno</h2>

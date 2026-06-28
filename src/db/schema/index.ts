@@ -4,5 +4,6 @@ export * from "./academy";
 export * from "./billing";
 export * from "./matches";
 export * from "./operations";
+export * from "./finance";
 export * from "./notifications";
 export * from "./league";

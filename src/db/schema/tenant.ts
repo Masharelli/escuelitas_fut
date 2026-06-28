@@ -41,6 +41,16 @@ export const sportEnum = pgEnum("sport", [
   "basquetbol",
 ]);
 
+/**
+ * Plan contratado por la escuela (Fase H). Habilita módulos por niveles:
+ *  - basic  : alumnos, pagos, asistencias, comunicación
+ *  - pro    : + estadísticas, reportes
+ *  - premium: + gastos / contabilidad operativa, dashboard ejecutivo, branding
+ * Default "premium" para no ocultar nada en escuelas ya existentes; el alta de
+ * nuevas escuelas podrá fijarlo en "basic" cuando se conecte la facturación.
+ */
+export const schoolPlan = pgEnum("school_plan", ["basic", "pro", "premium"]);
+
 /** Una organización = un tenant. Todo dato de dominio se aísla por `schoolId`. */
 export const schools = pgTable("schools", {
   id: text("id")
@@ -53,6 +63,7 @@ export const schools = pgTable("schools", {
   // escuelitas existentes quedan como academy + futbol por defecto.
   kind: orgKind("kind").notNull().default("academy"),
   sport: sportEnum("sport").notNull().default("futbol"),
+  plan: schoolPlan("plan").notNull().default("premium"),
   logoUrl: text("logo_url"),
   // Perfil de la escuela (editable por el admin en Fase 1)
   description: text("description"),

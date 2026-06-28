@@ -19,6 +19,7 @@ const schema = z.object({
   address: z.string().max(200).optional(),
   city: z.string().max(120).optional(),
   primaryColor: z.string().max(20).optional(),
+  plan: z.enum(["basic", "pro", "premium"]).optional(),
 });
 
 export async function updateSchool(
@@ -43,7 +44,7 @@ export async function updateSchool(
     }
   }
 
-  const { name, description, phone, email, address, city, primaryColor } =
+  const { name, description, phone, email, address, city, primaryColor, plan } =
     parsed.data;
 
   await db
@@ -56,6 +57,7 @@ export async function updateSchool(
       address: address || null,
       city: city || null,
       primaryColor: primaryColor || null,
+      ...(plan ? { plan } : {}),
       ...(logoUrl ? { logoUrl } : {}),
     })
     .where(eq(schools.id, membership.schoolId));

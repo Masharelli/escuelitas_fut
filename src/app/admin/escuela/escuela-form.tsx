@@ -5,8 +5,9 @@ import Image from "next/image";
 
 import { updateSchool, type FormState } from "./actions";
 import { PageHeader, Card } from "@/components/ui";
-import { TextField, TextareaField } from "@/components/form/fields";
+import { TextField, TextareaField, SelectField } from "@/components/form/fields";
 import { SubmitButton } from "@/components/submit-button";
+import { PLAN_LABELS } from "@/lib/plan";
 
 type School = {
   name: string;
@@ -17,7 +18,12 @@ type School = {
   address: string | null;
   city: string | null;
   primaryColor: string | null;
+  plan: string;
 };
+
+const PLAN_OPTIONS = (Object.keys(PLAN_LABELS) as (keyof typeof PLAN_LABELS)[]).map(
+  (value) => ({ value, label: PLAN_LABELS[value] })
+);
 
 export function EscuelaForm({ school }: { school: School }) {
   const [state, formAction] = useActionState<FormState, FormData>(
@@ -113,6 +119,23 @@ export function EscuelaForm({ school }: { school: School }) {
                 defaultValue={school.description ?? undefined}
               />
             </div>
+          </div>
+        </Card>
+
+        <Card>
+          <p className="mb-1 text-sm font-semibold text-ink">Plan</p>
+          <p className="mb-3 text-xs text-ink-soft">
+            Define qué módulos están activos: Profesional habilita estadísticas;
+            Premium suma gastos y dashboard ejecutivo.
+          </p>
+          <div className="sm:max-w-xs">
+            <SelectField
+              label="Plan contratado"
+              name="plan"
+              options={PLAN_OPTIONS}
+              defaultValue={school.plan}
+              required
+            />
           </div>
         </Card>
 

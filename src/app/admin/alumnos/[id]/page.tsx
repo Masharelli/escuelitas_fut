@@ -6,6 +6,7 @@ import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { getStudentInvitations, getLinkedGuardians } from "@/lib/invitations";
 import { getStudentStats } from "@/lib/stats";
+import { hasFeature } from "@/lib/plan";
 import { PageHeader, SecondaryLink } from "@/components/ui";
 import { StudentDetail } from "@/components/student-detail";
 import { StudentStats } from "@/components/student-stats";
@@ -25,10 +26,11 @@ export default async function AlumnoFichaPage({
   });
   if (!student) notFound();
 
+  const showStats = hasFeature(membership.school.plan, "stats");
   const [invitations, linked, stats] = await Promise.all([
     getStudentInvitations(id),
     getLinkedGuardians(id),
-    getStudentStats(membership.schoolId, id),
+    showStats ? getStudentStats(membership.schoolId, id) : Promise.resolve(null),
   ]);
 
   return (
@@ -63,9 +65,11 @@ export default async function AlumnoFichaPage({
 
       <StudentDetail student={student} />
 
-      <div className="mt-5">
-        <StudentStats stats={stats} />
-      </div>
+      {stats && (
+        <div className="mt-5">
+          <StudentStats stats={stats} />
+        </div>
+      )}
     </div>
   );
 }

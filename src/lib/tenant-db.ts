@@ -9,6 +9,7 @@ import {
   plans,
   trainingSessions,
   attendance,
+  expenses,
   students,
   teams,
   tournaments,
@@ -341,6 +342,15 @@ export function tenantDb(schoolId: string) {
         }
       },
     },
+    expenses: {
+      ...makeReads(db.query.expenses, expenses, schoolId),
+      insert: (values: Omit<typeof expenses.$inferInsert, "schoolId">) =>
+        db.insert(expenses).values({ ...values, schoolId }),
+      updateById: (id: string, values: Partial<typeof expenses.$inferInsert>) =>
+        db.update(expenses).set(values).where(rowIn(expenses, id, schoolId)),
+      deleteById: (id: string) =>
+        db.delete(expenses).where(rowIn(expenses, id, schoolId)),
+    },
   };
 }
 
@@ -355,6 +365,7 @@ type TenantTable =
   | typeof matchPlayerStats
   | typeof trainingSessions
   | typeof attendance
+  | typeof expenses
   | typeof tournamentStandings
   | typeof seasons
   | typeof leagueTeams
