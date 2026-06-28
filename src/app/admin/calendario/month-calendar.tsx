@@ -56,9 +56,13 @@ export function MonthCalendar({
 
   const selectedEvents = byDay.get(selected) ?? [];
 
-  // 7 columnas fijas vía estilo inline (no depende de que Tailwind genere
-  // la utilidad grid-cols-7).
-  const sevenCols = { gridTemplateColumns: "repeat(7, minmax(0, 1fr))" } as const;
+  // Grid de 7 columnas 100% vía estilo inline (no depende de que Tailwind
+  // genere `grid`/`grid-cols-7` para este archivo).
+  const sevenCols = {
+    display: "grid",
+    gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+    gap: "0.25rem",
+  } as const;
 
   return (
     <div>
@@ -85,7 +89,8 @@ export function MonthCalendar({
               type="button"
               onClick={() => setSelected(d.key)}
               aria-pressed={isSel}
-              className={`flex aspect-square flex-col items-center justify-start gap-1 rounded-xl border p-1 text-sm transition sm:p-1.5 ${
+              style={{ aspectRatio: "1 / 1" }}
+              className={`flex flex-col items-center justify-start gap-1 rounded-xl border p-1 text-sm transition sm:p-1.5 ${
                 isSel
                   ? "border-pitch bg-pitch/10"
                   : "border-ink/10 bg-white/70 hover:border-pitch/30"

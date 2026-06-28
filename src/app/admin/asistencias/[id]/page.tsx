@@ -10,9 +10,7 @@ import {
 } from "@/db/schema";
 import { formatKickoff } from "@/lib/competition";
 import { SESSION_KIND_LABELS, type SessionKind } from "@/lib/attendance";
-import { getCallupsForSession, type RsvpStatus } from "@/lib/callups";
 import { PageHeader, Card } from "@/components/ui";
-import { CallupManager } from "@/components/callup-manager";
 import { AttendanceForm } from "./attendance-form";
 import { deleteSession } from "../actions";
 
@@ -51,16 +49,6 @@ export default async function SessionDetailPage({
     note: byStudent.get(s.id)?.note ?? "",
   }));
 
-  // Convocatoria de la sesión (Fase C).
-  const callupRows = await getCallupsForSession(membership.schoolId, session.id);
-  const callupByStudent = new Map(callupRows.map((c) => [c.studentId, c]));
-  const callupPlayers = roster.map((s) => ({
-    id: s.id,
-    name: `${s.firstName} ${s.lastName}`,
-    convoked: callupByStudent.has(s.id),
-    rsvp: (callupByStudent.get(s.id)?.rsvp ?? "pending") as RsvpStatus,
-  }));
-
   return (
     <div className="mx-auto w-full max-w-2xl">
       <Link
@@ -91,17 +79,6 @@ export default async function SessionDetailPage({
           <AttendanceForm sessionId={session.id} players={players} />
         )}
       </Card>
-
-      {callupPlayers.length > 0 && (
-        <Card className="mt-4">
-          <p className="mb-3 text-sm font-semibold text-ink">Convocatoria</p>
-          <CallupManager
-            target="session"
-            targetId={session.id}
-            players={callupPlayers}
-          />
-        </Card>
-      )}
 
       <div className="mt-4 flex items-center">
         <form action={deleteSession} className="ml-auto">
