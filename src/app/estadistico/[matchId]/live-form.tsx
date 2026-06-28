@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 import { addEventAction, deleteEventAction } from "./actions";
 
 type Player = { id: string; name: string };
@@ -41,6 +43,15 @@ export function LiveForm({
   const homeScore = isHome ? ours : opp;
   const awayScore = isHome ? opp : ours;
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const typeRef = useRef<HTMLInputElement>(null);
+  // Server actions no permiten `name` en un botón con formAction; el tipo de
+  // evento se fija en un hidden y se envía el formulario al hacer clic.
+  function fire(type: string) {
+    if (typeRef.current) typeRef.current.value = type;
+    formRef.current?.requestSubmit();
+  }
+
   const btn =
     "rounded-xl px-3 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-50";
 
@@ -60,8 +71,13 @@ export function LiveForm({
       </div>
 
       {/* Captura */}
-      <form className="space-y-3 rounded-2xl border border-ink/10 bg-white/80 p-5 shadow-sm">
+      <form
+        ref={formRef}
+        action={addEventAction}
+        className="space-y-3 rounded-2xl border border-ink/10 bg-white/80 p-5 shadow-sm"
+      >
         <input type="hidden" name="matchId" value={matchId} />
+        <input type="hidden" name="type" ref={typeRef} />
         <div className="flex gap-3">
           <label className="w-24">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">
@@ -97,37 +113,29 @@ export function LiveForm({
 
         <div className="grid grid-cols-2 gap-2">
           <button
-            type="submit"
-            formAction={addEventAction}
-            name="type"
-            value="goal"
+            type="button"
+            onClick={() => fire("goal")}
             className={`${btn} bg-pitch text-chalk hover:bg-pitch-deep`}
           >
             ⚽ Gol {teamName}
           </button>
           <button
-            type="submit"
-            formAction={addEventAction}
-            name="type"
-            value="goal_opponent"
+            type="button"
+            onClick={() => fire("goal_opponent")}
             className={`${btn} bg-ink/80 text-chalk hover:bg-ink`}
           >
             Gol rival
           </button>
           <button
-            type="submit"
-            formAction={addEventAction}
-            name="type"
-            value="yellow"
+            type="button"
+            onClick={() => fire("yellow")}
             className={`${btn} bg-amber-400 text-ink hover:bg-amber-500`}
           >
             🟨 Amarilla
           </button>
           <button
-            type="submit"
-            formAction={addEventAction}
-            name="type"
-            value="red"
+            type="button"
+            onClick={() => fire("red")}
             className={`${btn} bg-red-500 text-chalk hover:bg-red-600`}
           >
             🟥 Roja
