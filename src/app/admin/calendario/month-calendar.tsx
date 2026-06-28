@@ -56,10 +56,17 @@ export function MonthCalendar({
 
   const selectedEvents = byDay.get(selected) ?? [];
 
+  // 7 columnas fijas vía estilo inline (no depende de que Tailwind genere
+  // la utilidad grid-cols-7).
+  const sevenCols = { gridTemplateColumns: "repeat(7, minmax(0, 1fr))" } as const;
+
   return (
     <div>
       {/* Encabezados de día */}
-      <div className="mb-1 grid grid-cols-7 gap-1 text-center text-xs font-medium text-ink-soft">
+      <div
+        className="mb-1 grid gap-1 text-center text-xs font-medium text-ink-soft"
+        style={sevenCols}
+      >
         {WEEKDAY_HEADERS.map((w) => (
           <div key={w} className="py-1">
             {w}
@@ -68,7 +75,7 @@ export function MonthCalendar({
       </div>
 
       {/* Grid del mes */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid gap-1" style={sevenCols}>
         {days.map((d) => {
           const dayEvents = byDay.get(d.key) ?? [];
           const isSel = d.key === selected;
