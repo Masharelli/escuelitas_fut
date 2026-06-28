@@ -55,6 +55,35 @@ export function weekRangeLabel(weekStart: Date): string {
   return `${fmt(weekStart, !sameMonth)} – ${fmt(end, true)} ${year}`;
 }
 
+/** Primer día del mes (00:00 local) que contiene a `d`. */
+export function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+/** Nueva fecha desplazada `n` meses (al día 1). */
+export function addMonths(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth() + n, 1);
+}
+
+/** "junio 2026" (mes y año). */
+export function monthLabel(d: Date): string {
+  const s = new Intl.DateTimeFormat("es-MX", {
+    month: "long",
+    year: "numeric",
+  }).format(d);
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Clave de día estable "YYYY-MM-DD" en hora local (para agrupar sin líos de TZ). */
+export function toDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
+
+/** Encabezados de la semana (lunes→domingo). */
+export const WEEKDAY_HEADERS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
+
 /** ¿Es `d` el mismo día (local) que `ref`? */
 export function isSameDay(d: Date, ref: Date): boolean {
   return (
