@@ -86,6 +86,11 @@ export const students = pgTable("students", {
   guardianName: text("guardian_name"),
   guardianPhone: text("guardian_phone"),
   guardianEmail: text("guardian_email"),
+  // Fecha en que se inscribió el niño y su última reinscripción (cuando se
+  // paga un cargo tipo "enrollment" se actualiza reenrolledOn).
+  enrolledOn: date("enrolled_on", { mode: "string" }),
+  reenrolledOn: date("reenrolled_on", { mode: "string" }),
+  scholarshipPaymentDay: integer("scholarship_payment_day"),
   notes: text("notes"),
   status: studentStatus("status").notNull().default("active"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),

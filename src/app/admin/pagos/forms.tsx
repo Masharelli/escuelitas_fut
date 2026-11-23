@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import {
   createPlan,
   createOneOffCharge,
+  createDiscount,
   generateCharges,
   type FormState,
 } from "./actions";
@@ -29,29 +30,37 @@ const KIND_OPTIONS: Option[] = [
   { value: "product", label: "Producto" },
 ];
 
-export function CreatePlanForm({ categories }: { categories: Option[] }) {
+export function CreatePlanForm({ categories, plan }: { categories: Option[]; plan?: { id: string; name: string; kind: string; amountCents: number; categoryId: string | null; description: string | null; annualRenewalStartsOn: string | null } }) {
   const [state, action] = useActionState<FormState, FormData>(
     createPlan,
     undefined
   );
   const ref = useRef<HTMLFormElement>(null);
   useEffect(() => {
-    if (state?.ok) ref.current?.reset();
-  }, [state]);
+    if (state?.ok && !plan) ref.current?.reset();
+  }, [state, plan]);
 
   return (
     <form ref={ref} action={action} className="space-y-3">
-      <TextField label="Nombre del plan" name="name" placeholder="Ej. Mensualidad Sub-10" />
-      <SelectField label="Tipo de cobro" name="kind" options={KIND_OPTIONS} required />
+      {plan && <input type="hidden" name="id" value={plan.id} />}
+      <TextField defaultValue={plan?.name} label="Nombre del plan" name="name" placeholder="Ej. Mensualidad Sub-10" />
+      <SelectField label="Tipo de cobro" name="kind" defaultValue={plan?.kind} options={KIND_OPTIONS} required />
+      <label className="flex items-start gap-2 text-sm text-ink">
+        <input type="checkbox" name="annualRenewal" defaultChecked={!!plan?.annualRenewalStartsOn} className="mt-1 accent-pitch" />
+        <span>Renovar cada año (planes de inscripción)</span>
+      </label>
       <TextField
         label="Monto (MXN)"
         name="amount"
+        defaultValue={plan ? String(plan.amountCents / 100) : undefined}
         type="number"
+        step="0.01"
         placeholder="500.00"
       />
       <SelectField
         label="Categoría (opcional)"
         name="categoryId"
+        defaultValue={plan?.categoryId ?? ""}
         options={categories}
         placeholder={categories.length ? "Aplica a toda la escuela" : "Crea una categoría primero"}
         hint="Si eliges una categoría, la cuota aplica solo a esos alumnos."
@@ -59,11 +68,61 @@ export function CreatePlanForm({ categories }: { categories: Option[] }) {
       <TextareaField
         label="Descripción (opcional)"
         name="description"
+        defaultValue={plan?.description ?? ""}
         rows={2}
         placeholder="Detalles del plan…"
       />
       <ErrorMsg state={state} />
-      <SubmitButton>Agregar plan</SubmitButton>
+      {state?.ok && plan && <p role="status" className="text-sm text-pitch">Precio actualizado para los próximos cargos.</p>}
+      <SubmitButton>{plan ? "Guardar cambios" : "Agregar plan"}</SubmitButton>
+    </form>
+  );
+}
+
+/** Alta de beca/promoción: descuento porcentual (beca 100% = gratis) o fijo. */
+export function CreateDiscountForm({ discount }: { discount?: { id: string; name: string; kind: string; value: number } }) {
+  const [state, action] = useActionState<FormState, FormData>(
+    createDiscount,
+    undefined
+  );
+  const ref = useRef<HTMLFormElement>(null);
+  const [kind, setKind] = useState(discount?.kind ?? "percent");
+  useEffect(() => {
+    if (state?.ok && !discount) ref.current?.reset();
+  }, [state, discount]);
+
+  return (
+    <form ref={ref} action={action} className="space-y-3">
+      {discount && <input type="hidden" name="id" value={discount.id} />}
+      <TextField
+        defaultValue={discount?.name}
+        label="Nombre"
+        name="name"
+        placeholder="Ej. Beca deportiva / Promo hermanos"
+      />
+      <label className="block">
+        <span className="mb-1.5 block text-sm font-medium text-ink">Tipo</span>
+        <select
+          name="kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+          className="w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-ink shadow-sm outline-none transition focus:border-pitch focus:ring-2 focus:ring-pitch/20"
+        >
+          <option value="percent">Porcentaje de descuento</option>
+          <option value="fixed">Monto fijo de descuento</option>
+        </select>
+      </label>
+      <TextField
+        label={kind === "percent" ? "Descuento (%)" : "Descuento (MXN)"}
+        name="value"
+        defaultValue={discount ? String(discount.kind === "fixed" ? discount.value / 100 : discount.value) : undefined}
+        type="number"
+        step={kind === "fixed" ? "0.01" : "1"}
+        placeholder={kind === "percent" ? "50 (100 = beca completa)" : "200.00"}
+      />
+      {state?.ok && <p role="status" className="text-sm text-pitch">{discount ? "Beca/promoción actualizada ✓" : "Beca/promoción creada ✓"}</p>}
+      <ErrorMsg state={state} />
+      <SubmitButton>{discount ? "Guardar cambios" : "Crear beca/promoción"}</SubmitButton>
     </form>
   );
 }

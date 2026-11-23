@@ -15,7 +15,7 @@ export default async function InvitacionPage({
   const { token } = await params;
   const invitation = await getInvitationByToken(token);
 
-  if (!invitation || invitation.status === "revoked") {
+  if (!invitation) {
     return (
       <AuthShell
         title="Invitación no válida"
@@ -62,7 +62,7 @@ export default async function InvitacionPage({
       }
     >
       <div className="flex items-center gap-4 rounded-2xl border border-ink/10 bg-chalk-deep/40 p-4">
-        <Avatar name={student.firstName} photoUrl={student.photoUrl} />
+        <Avatar name={student.firstName} photoUrl={student.photoUrl?.startsWith("/api/images/") ? `${student.photoUrl}?invitation=${encodeURIComponent(token)}` : student.photoUrl} />
         <div className="min-w-0">
           <p className="truncate font-semibold text-ink">{childName}</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
@@ -77,7 +77,7 @@ export default async function InvitacionPage({
           <input type="hidden" name="token" value={token} />
           <SubmitButton>Vincular a mi cuenta</SubmitButton>
           <p className="mt-3 text-center text-xs text-ink-soft">
-            Entraste como {session.user?.email}. Quedará en tu portal de padres.
+            Entraste como {session.user?.email}. Usa esta misma cuenta para vincular a tus otros hijos.
           </p>
         </form>
       ) : (

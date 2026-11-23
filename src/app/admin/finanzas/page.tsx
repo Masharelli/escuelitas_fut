@@ -1,49 +1,49 @@
 import Link from "next/link";
 import { desc, ilike, or, sql } from "drizzle-orm";
 
-import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
-import { hasFeature } from "@/lib/plan";
+import { requireRole, OWNER_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { charges as chargesTable, students as studentsTable } from "@/db/schema";
 import {
   formatMoney,
+  formatDueDate,
   periodLabel,
   summarizeCharges,
+  effectiveMonth,
   isOverdue,
   KIND_LABELS,
   CHARGE_STATUS_LABELS,
   type ChargeKind,
 } from "@/lib/billing";
+import { waLink } from "@/lib/whatsapp";
+import { FilterBar } from "@/components/filter-bar";
 import {
   financeSummary,
   profitByCategory,
   monthOf,
-  type CategoryProfitRow,
 } from "@/lib/finance";
 import { PageHeader } from "@/components/ui";
 import { markChargePaid, cancelCharge } from "./actions";
 
 const STATUS_OPTIONS = [
-  { value: "", label: "Todos los estados" },
   { value: "pending", label: "Pendiente" },
+  { value: "vencido", label: "Vencido" },
   { value: "paid", label: "Pagado" },
   { value: "canceled", label: "Cancelado" },
 ];
 
-/** Mes "YYYY-MM" efectivo del cargo: su periodo, o el mes en que se creó. */
-function effectiveMonth(c: { periodMonth: string | null; createdAt: Date }) {
-  if (c.periodMonth) return c.periodMonth;
-  const d = c.createdAt;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
+const KIND_OPTIONS = (Object.keys(KIND_LABELS) as ChargeKind[]).map((k) => ({
+  value: k,
+  label: KIND_LABELS[k],
+}));
 
 export default async function FinanzasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string; estado?: string; q?: string }>;
+  searchParams: Promise<{ mes?: string; estado?: string; tipo?: string; q?: string }>;
 }) {
-  const { mes, estado, q } = await searchParams;
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { mes, estado, tipo, q } = await searchParams;
+  const { membership } = await requireRole(OWNER_ROLES);
   const tdb = tenantDb(membership.schoolId);
 
   const charges = await tdb.charges.findMany({
@@ -53,23 +53,25 @@ export default async function FinanzasPage({
 
   const summary = summarizeCharges(charges, new Date());
 
-  // Bloque ejecutivo (Premium): utilidad, margen y rentabilidad por categoría.
-  const showExec = hasFeature(membership.school.plan, "exec_dashboard");
+  // El dueño puede consultar las finanzas de toda su escuela.
   const period = monthOf(new Date());
-  let exec: ReturnType<typeof financeSummary> | null = null;
-  let categoryProfit: CategoryProfitRow[] = [];
-  if (showExec) {
-    const [expenses, categories] = await Promise.all([
-      tdb.expenses.findMany(),
-      tdb.categories.findMany(),
-    ]);
-    exec = financeSummary(charges, expenses, period);
-    categoryProfit = profitByCategory(charges, expenses, categories, period);
-  }
+  const [expenses, categories] = await Promise.all([
+    tdb.expenses.findMany(),
+    tdb.categories.findMany(),
+  ]);
+  const exec = financeSummary(charges, expenses, period);
+  const allExpensesCents = expenses.reduce((sum, expense) => sum + expense.amountCents, 0);
+  const allIncomeCents = charges.filter((c) => c.status === "paid").reduce((sum, c) => sum + c.amountCents, 0);
+  const categoryProfit = profitByCategory(charges, expenses, categories, period);
 
-  // Lista filtrada por mes y estado.
+  // Lista filtrada por mes, estado (incluye "vencido") y tipo de cobro.
   const filtered = charges.filter((c) => {
-    if (estado && c.status !== estado) return false;
+    if (estado === "vencido") {
+      if (!isOverdue(c)) return false;
+    } else if (estado && c.status !== estado) {
+      return false;
+    }
+    if (tipo && c.kind !== tipo) return false;
     if (mes && effectiveMonth(c) !== mes) return false;
     return true;
   });
@@ -99,6 +101,7 @@ export default async function FinanzasPage({
   const exportQs = new URLSearchParams();
   if (mes) exportQs.set("mes", mes);
   if (estado) exportQs.set("estado", estado);
+  if (tipo) exportQs.set("tipo", tipo);
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -109,6 +112,11 @@ export default async function FinanzasPage({
       />
 
       {/* Resumen */}
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+        <SummaryCard label="Ingresos acumulados" value={formatMoney(allIncomeCents)} tone="pitch" />
+        <SummaryCard label="Egresos acumulados" value={formatMoney(allExpensesCents)} tone="tangerine" />
+        <SummaryCard label="Resultado acumulado" value={formatMoney(allIncomeCents - allExpensesCents)} />
+      </div>
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <SummaryCard
           label="Cobrado este mes"
@@ -238,48 +246,23 @@ export default async function FinanzasPage({
       )}
 
       {/* Todos los cargos + filtros */}
-      <div className="mt-8 flex flex-wrap items-end justify-between gap-3">
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-lg font-bold">Cargos</h2>
-        <div className="flex flex-wrap items-end gap-2">
-          <form method="get" className="flex flex-wrap items-end gap-2">
-            {q && <input type="hidden" name="q" value={q} />}
-            <label className="text-xs text-ink-soft">
-              <span className="mb-1 block">Mes</span>
-              <input
-                type="month"
-                name="mes"
-                defaultValue={mes ?? ""}
-                className="rounded-lg border border-ink/15 bg-white px-2.5 py-2 text-sm text-ink shadow-sm"
-              />
-            </label>
-            <label className="text-xs text-ink-soft">
-              <span className="mb-1 block">Estado</span>
-              <select
-                name="estado"
-                defaultValue={estado ?? ""}
-                className="rounded-lg border border-ink/15 bg-white px-2.5 py-2 text-sm text-ink shadow-sm"
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="submit"
-              className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink"
-            >
-              Filtrar
-            </button>
-          </form>
-          <a
-            href={`/admin/finanzas/export${exportQs.size ? `?${exportQs}` : ""}`}
-            className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink"
-          >
-            Exportar CSV
-          </a>
-        </div>
+        <a
+          href={`/admin/finanzas/export${exportQs.size ? `?${exportQs}` : ""}`}
+          className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink"
+        >
+          Exportar CSV
+        </a>
+      </div>
+      <div className="mt-3">
+        <FilterBar
+          month={{ key: "mes" }}
+          selects={[
+            { key: "estado", allLabel: "Todos los estados", options: STATUS_OPTIONS },
+            { key: "tipo", allLabel: "Todos los tipos", options: KIND_OPTIONS },
+          ]}
+        />
       </div>
 
       {filtered.length === 0 ? (
@@ -318,6 +301,10 @@ export default async function FinanzasPage({
                 )}
                 {c.status === "pending" && (
                   <>
+                    <WhatsAppReminder
+                      schoolName={membership.school.name}
+                      charge={c}
+                    />
                     <ChargeAction action={markChargePaid} id={c.id} label="Marcar pagado" primary />
                     <ChargeAction action={cancelCharge} id={c.id} label="Cancelar" />
                   </>
@@ -353,6 +340,45 @@ function SummaryCard({
         {value}
       </p>
     </div>
+  );
+}
+
+/** Abre WhatsApp al tutor con el recordatorio del cargo prellenado. */
+function WhatsAppReminder({
+  schoolName,
+  charge,
+}: {
+  schoolName: string;
+  charge: {
+    description: string;
+    amountCents: number;
+    currency: string;
+    dueDate: string | null;
+    student: {
+      firstName: string;
+      lastName: string;
+      guardianName: string | null;
+      guardianPhone: string | null;
+    };
+  };
+}) {
+  const s = charge.student;
+  const due = charge.dueDate ? ` (vence el ${formatDueDate(charge.dueDate)})` : "";
+  const text =
+    `Hola${s.guardianName ? ` ${s.guardianName}` : ""} 👋. Te recordamos el pago de ` +
+    `${charge.description} de ${s.firstName} ${s.lastName} por ` +
+    `${formatMoney(charge.amountCents, charge.currency)}${due}. — ${schoolName}`;
+  const href = waLink(s.guardianPhone, text);
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-600"
+    >
+      WhatsApp
+    </a>
   );
 }
 

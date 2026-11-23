@@ -9,6 +9,8 @@ import { db } from "@/db";
 import { charges, guardianships, schools, students, autopay } from "@/db/schema";
 import { requireAuth } from "@/lib/tenant";
 import { getStripe } from "@/lib/stripe";
+import { billingDate } from "@/lib/billing-rules";
+import { generateMonthlyCharges } from "@/lib/recurring-billing";
 
 /** Verifica que el alumno sea hijo del usuario; devuelve true/false. */
 async function isGuardianOf(userId: string, studentId: string) {
@@ -147,32 +149,40 @@ export async function payCharge(formData: FormData) {
   const origin = h.get("origin") ?? `http://${h.get("host")}`;
   const stripe = getStripe();
 
-  const checkout = await stripe.checkout.sessions.create(
-    {
+  if (charge.kind === "monthly") {
+    const today = billingDate();
+    await generateMonthlyCharges(charge.schoolId, today.slice(0, 7), today, charge.studentId, false);
+  }
+
+  const acct = { stripeAccount: school.stripeAccountId };
+  const url = await db.transaction(async (tx) => {
+    const [current] = await tx.select().from(charges)
+      .where(and(eq(charges.id, chargeId), eq(charges.status, "pending"))).for("update");
+    if (!current || current.stripePaymentIntentId || current.amountCents <= 0) return null;
+    if (current.stripeCheckoutId) {
+      const prior = await stripe.checkout.sessions.retrieve(current.stripeCheckoutId, undefined, acct);
+      if (prior.status === "open") return prior.url;
+      if (prior.status === "complete") return null;
+    }
+
+    const checkout = await stripe.checkout.sessions.create({
       mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: charge.currency.toLowerCase(),
-            product_data: { name: charge.description },
-            unit_amount: charge.amountCents,
-          },
-          quantity: 1,
+      line_items: [{
+        price_data: {
+          currency: current.currency.toLowerCase(),
+          product_data: { name: current.description },
+          unit_amount: current.amountCents,
         },
-      ],
-      metadata: { chargeId: charge.id },
-      payment_intent_data: { metadata: { chargeId: charge.id } },
+        quantity: 1,
+      }],
+      metadata: { chargeId: current.id },
+      payment_intent_data: { metadata: { chargeId: current.id } },
       success_url: `${origin}/padres/pagos?confirm={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/padres/pagos`,
-    },
-    { stripeAccount: school.stripeAccountId }
-  );
+    }, acct);
 
-  await db
-    .update(charges)
-    .set({ stripeCheckoutId: checkout.id })
-    .where(eq(charges.id, charge.id));
-
-  if (!checkout.url) redirect("/padres/pagos");
-  redirect(checkout.url);
+    await tx.update(charges).set({ stripeCheckoutId: checkout.id }).where(eq(charges.id, chargeId));
+    return checkout.url;
+  });
+  redirect(url ?? "/padres/pagos");
 }

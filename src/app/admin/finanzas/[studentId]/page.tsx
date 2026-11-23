@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 
-import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { requireRole, OWNER_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { charges as chargesTable } from "@/db/schema";
 import {
@@ -11,10 +11,11 @@ import {
   pendingBalance,
   KIND_LABELS,
   CHARGE_STATUS_LABELS,
+  isManualPayment,
   type ChargeKind,
 } from "@/lib/billing";
 import { PageHeader } from "@/components/ui";
-import { markChargePaid, cancelCharge, markChargePending } from "../actions";
+import { markChargePaid, cancelCharge, markChargePending, undoManualPayment } from "../actions";
 
 export default async function EstadoCuentaPage({
   params,
@@ -22,7 +23,7 @@ export default async function EstadoCuentaPage({
   params: Promise<{ studentId: string }>;
 }) {
   const { studentId } = await params;
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership } = await requireRole(OWNER_ROLES);
   const tdb = tenantDb(membership.schoolId);
 
   const student = await tdb.students.findById(studentId);
@@ -101,9 +102,11 @@ export default async function EstadoCuentaPage({
                     <RowAction action={markChargePaid} id={c.id} back={back} label="Marcar pagado" primary />
                     <RowAction action={cancelCharge} id={c.id} back={back} label="Cancelar" />
                   </>
-                ) : (
+                ) : isManualPayment(c) ? (
+                  <RowAction action={undoManualPayment} id={c.id} back={back} label="Deshacer pago" />
+                ) : c.status === "canceled" && !c.paidAt && !c.stripeCheckoutId && !c.stripePaymentIntentId ? (
                   <RowAction action={markChargePending} id={c.id} back={back} label="Reabrir" />
-                )}
+                ) : null}
               </div>
             </li>
           ))}

@@ -2,7 +2,12 @@
 
 import { useActionState, useEffect, useRef } from "react";
 
-import { createTournament, addStanding, type FormState } from "./actions";
+import {
+  createTournament,
+  addStanding,
+  uploadResultsImage,
+  type FormState,
+} from "./actions";
 import { TextField, SelectField } from "@/components/form/fields";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -92,6 +97,32 @@ export function AddStandingForm({ tournamentId }: { tournamentId: string }) {
       </div>
       <ErrorMsg state={state} />
       <SubmitButton>Agregar a la tabla</SubmitButton>
+    </form>
+  );
+}
+
+/** Sube la foto de la tabla oficial publicada por la liga. */
+export function ResultsImageForm({ tournamentId }: { tournamentId: string }) {
+  const [state, action] = useActionState<FormState, FormData>(
+    uploadResultsImage,
+    undefined
+  );
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (state?.ok) ref.current?.reset();
+  }, [state]);
+
+  return (
+    <form ref={ref} action={action} className="space-y-3">
+      <input type="hidden" name="tournamentId" value={tournamentId} />
+      <input
+        type="file"
+        name="image"
+        accept="image/png,image/jpeg,image/webp"
+        className="block w-full text-sm text-ink-soft file:mr-3 file:rounded-lg file:border-0 file:bg-pitch/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-pitch hover:file:bg-pitch/15"
+      />
+      <ErrorMsg state={state} />
+      <SubmitButton>Subir imagen de resultados</SubmitButton>
     </form>
   );
 }

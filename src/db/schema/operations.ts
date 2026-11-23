@@ -6,8 +6,9 @@ import {
   pgEnum,
   uniqueIndex,
   index,
+  check,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { schools } from "./tenant";
 import { users } from "./auth";
 import { teams, students, invitationStatus } from "./academy";
@@ -145,6 +146,11 @@ export const callups = pgTable(
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
     rsvp: rsvpStatus("rsvp").notNull().default("pending"),
+    // Token del link mágico: permite confirmar asistencia desde WhatsApp sin
+    // iniciar sesión (/confirmar/[token]).
+    rsvpToken: text("rsvp_token")
+      .notNull()
+      .default(sql`gen_random_uuid()::text`),
     respondedAt: timestamp("responded_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
@@ -212,6 +218,7 @@ export const staffInvitations = pgTable("staff_invitations", {
     .references(() => schools.id, { onDelete: "cascade" }),
   teamId: text("team_id").references(() => teams.id, { onDelete: "set null" }),
   email: text("email"),
+  role: text("role").$type<"coach" | "admin">().notNull().default("coach"),
   token: text("token")
     .notNull()
     .unique()
@@ -222,7 +229,7 @@ export const staffInvitations = pgTable("staff_invitations", {
   }),
   acceptedAt: timestamp("accepted_at", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-});
+}, (t) => [check("staff_invitations_role_check", sql`${t.role} in ('coach', 'admin')`)]);
 
 export const staffInvitationsRelations = relations(
   staffInvitations,
@@ -252,6 +259,10 @@ export const matchEventType = pgEnum("match_event_type", [
   "goal_opponent", // gol del rival
   "yellow", // tarjeta amarilla (nuestra)
   "red", // tarjeta roja (nuestra)
+  "kick_off", // inicio del partido
+  "half_time", // medio tiempo
+  "second_half", // arranca el segundo tiempo
+  "full_time", // final del partido (dispara la finalización)
 ]);
 
 export const matchEvents = pgTable(

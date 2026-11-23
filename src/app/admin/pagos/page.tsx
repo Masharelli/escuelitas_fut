@@ -15,11 +15,14 @@ import {
   formatMoney,
   periodLabel,
   currentPeriod,
+  effectiveMonth,
+  isOverdue,
   KIND_LABELS,
   CHARGE_STATUS_LABELS,
   type ChargeKind,
 } from "@/lib/billing";
 import { PageHeader, Card } from "@/components/ui";
+import { FilterBar } from "@/components/filter-bar";
 import {
   CreatePlanForm,
   GenerateChargesForm,
@@ -36,11 +39,18 @@ import {
 export default async function AdminPagosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string }>;
+  searchParams: Promise<{
+    connected?: string;
+    mes?: string;
+    estado?: string;
+    tipo?: string;
+    alumno?: string;
+  }>;
 }) {
-  const { connected } = await searchParams;
+  const { connected, mes, estado, tipo, alumno } = await searchParams;
   const { membership } = await requireRole(ADMIN_ROLES);
   const tdb = tenantDb(membership.schoolId);
+  if (membership.role !== "owner") return <OperationalPayments schoolId={membership.schoolId} studentId={alumno} />;
 
   const school = await db.query.schools.findFirst({
     where: eq(schools.id, membership.schoolId),
@@ -83,12 +93,24 @@ export default async function AdminPagosPage({
   const pending = charges.filter((c) => c.status === "pending");
   const pendingSum = pending.reduce((s, c) => s + c.amountCents, 0);
 
+  // Cargos filtrados por mes, estado (incluye "vencido") y tipo de cobro.
+  const filteredCharges = charges.filter((c) => {
+    if (estado === "vencido") {
+      if (!isOverdue(c)) return false;
+    } else if (estado && c.status !== estado) {
+      return false;
+    }
+    if (tipo && c.kind !== tipo) return false;
+    if (mes && effectiveMonth(c) !== mes) return false;
+    return true;
+  });
+
   return (
     <div className="mx-auto w-full max-w-5xl">
       <PageHeader
         eyebrow="Pagos"
         title="Pagos"
-        subtitle="Define planes, genera las cuotas del mes y registra los pagos."
+        subtitle="Configura los planes para mensualidades y renovaciones automáticas y registra los pagos."
       />
 
       {/* Estado de cobros en línea con Stripe Connect */}
@@ -156,8 +178,8 @@ export default async function AdminPagosPage({
         <Card>
           <p className="mb-3 text-sm font-semibold text-ink">Generar cuotas</p>
           <p className="mb-3 text-xs text-ink-soft">
-            Crea el cargo del mes a cada alumno con cuota mensual. Es seguro
-            repetirlo: no duplica cargos.
+            Las mensualidades se generan cada mes con el plan de la categoría o el plan general.
+            También puedes generarlas aquí.
           </p>
           <GenerateChargesForm currentPeriod={currentPeriod()} />
         </Card>
@@ -199,7 +221,7 @@ export default async function AdminPagosPage({
                   {!p.active && " · inactivo"}
                 </p>
               </div>
-              <DeleteForm id={p.id} />
+              <div className="flex flex-col items-end gap-2"><DeleteForm id={p.id} /><details className="w-full"><summary className="cursor-pointer text-sm font-medium text-pitch">Modificar precio</summary><div className="mt-3"><CreatePlanForm categories={categoryOptions} plan={p} /></div></details></div>
             </li>
           ))}
         </ul>
@@ -215,13 +237,44 @@ export default async function AdminPagosPage({
           </span>
         )}
       </div>
+      {charges.length > 0 && (
+        <div className="mt-3">
+          <FilterBar
+            month={{ key: "mes" }}
+            selects={[
+              {
+                key: "estado",
+                allLabel: "Todos los estados",
+                options: [
+                  { value: "pending", label: "Pendiente" },
+                  { value: "vencido", label: "Vencido" },
+                  { value: "paid", label: "Pagado" },
+                  { value: "canceled", label: "Cancelado" },
+                ],
+              },
+              {
+                key: "tipo",
+                allLabel: "Todos los tipos",
+                options: (Object.keys(KIND_LABELS) as ChargeKind[]).map((k) => ({
+                  value: k,
+                  label: KIND_LABELS[k],
+                })),
+              },
+            ]}
+          />
+        </div>
+      )}
       {charges.length === 0 ? (
         <p className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">
           No hay cargos todavía. Genera las cuotas del mes o crea un cobro único.
         </p>
+      ) : filteredCharges.length === 0 ? (
+        <p className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">
+          No hay cargos con esos filtros.
+        </p>
       ) : (
         <ul className="mt-3 space-y-2">
-          {charges.map((c) => (
+          {filteredCharges.map((c) => (
             <li
               key={c.id}
               className="flex flex-col gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
@@ -308,5 +361,38 @@ function SmallForm({
         {label}
       </button>
     </form>
+  );
+}
+
+/** La operación consulta cargos por alumno, sin cargar el libro global. */
+async function OperationalPayments({ schoolId, studentId }: { schoolId: string; studentId?: string }) {
+  const tdb = tenantDb(schoolId);
+  const students = await tdb.students.findMany({
+    columns: { id: true, firstName: true, lastName: true },
+    orderBy: [asc(studentsTable.lastName), asc(studentsTable.firstName)],
+  });
+  const selected = students.find((s) => s.id === studentId);
+  const charges = selected ? await tdb.charges.findMany({
+    where: eq(chargesTable.studentId, selected.id), orderBy: [desc(chargesTable.createdAt)],
+  }) : [];
+  return (
+    <div className="mx-auto w-full max-w-3xl">
+      <PageHeader eyebrow="Operación" title="Registrar pagos" subtitle="Consulta los cargos autorizados por el dueño y registra los pagos de cada alumno." />
+      <form method="get" className="mb-6 flex flex-wrap items-end gap-3">
+        <label className="min-w-0 flex-1 text-sm text-ink-soft">Alumno
+          <select name="alumno" required defaultValue={selected?.id ?? ""} className="mt-1 block w-full rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-ink">
+            <option value="">Selecciona un alumno</option>
+            {students.map((s) => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}
+          </select>
+        </label>
+        <button className="rounded-full bg-pitch px-5 py-2.5 text-sm font-semibold text-chalk">Consultar</button>
+      </form>
+      {selected && (charges.length ? <ul className="space-y-3">{charges.map((c) => (
+        <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4">
+          <div><p className="font-semibold">{c.description}</p><p className="text-sm text-ink-soft">{formatMoney(c.amountCents, c.currency)}{c.periodMonth ? ` · ${periodLabel(c.periodMonth)}` : ""}</p></div>
+          <div className="flex items-center gap-2"><StatusBadge status={c.status} />{c.status === "pending" && <form action={markChargePaid}><input type="hidden" name="id" value={c.id} /><input type="hidden" name="studentId" value={selected.id} /><button className="rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk">Registrar pago</button></form>}</div>
+        </li>
+      ))}</ul> : <p className="text-sm text-ink-soft">Este alumno no tiene cargos registrados.</p>)}
+    </div>
   );
 }

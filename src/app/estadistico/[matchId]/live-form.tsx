@@ -17,6 +17,10 @@ const EVENT_LABEL: Record<string, string> = {
   goal_opponent: "Gol rival",
   yellow: "🟨 Amarilla",
   red: "🟥 Roja",
+  kick_off: "🟢 Inicio del partido",
+  half_time: "⏸️ Medio tiempo",
+  second_half: "▶️ Segundo tiempo",
+  full_time: "🏁 Final del partido",
 };
 
 export function LiveForm({
@@ -52,6 +56,20 @@ export function LiveForm({
     formRef.current?.requestSubmit();
   }
 
+  // Fase del partido según los eventos ya registrados.
+  const has = (t: string) => events.some((e) => e.type === t);
+  const started = has("kick_off");
+  const ended = has("full_time");
+  const phase: { type: string; label: string; confirm?: string } | null = ended
+    ? null
+    : !started
+      ? { type: "kick_off", label: "🟢 Iniciar partido" }
+      : !has("half_time")
+        ? { type: "half_time", label: "⏸️ Medio tiempo" }
+        : !has("second_half")
+          ? { type: "second_half", label: "▶️ Iniciar 2º tiempo" }
+          : null;
+
   const btn =
     "rounded-xl px-3 py-3 text-sm font-semibold shadow-sm transition disabled:opacity-50";
 
@@ -78,6 +96,49 @@ export function LiveForm({
       >
         <input type="hidden" name="matchId" value={matchId} />
         <input type="hidden" name="type" ref={typeRef} />
+
+        {/* Control del partido: inicio, medio tiempo, 2º tiempo y final */}
+        {ended ? (
+          <p className="rounded-xl bg-pitch/10 p-3 text-center text-sm font-semibold text-pitch">
+            🏁 Partido finalizado. Marcador y estadísticas guardados.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            {phase && (
+              <button
+                type="button"
+                onClick={() => fire(phase.type)}
+                className={`${btn} border border-pitch/30 bg-white text-pitch hover:bg-pitch/5 ${
+                  !started ? "col-span-2" : ""
+                }`}
+              >
+                {phase.label}
+              </button>
+            )}
+            {started && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "¿Finalizar el partido? Se guardará el marcador, las estadísticas y la tabla del torneo."
+                    )
+                  ) {
+                    fire("full_time");
+                  }
+                }}
+                className={`${btn} bg-ink text-chalk hover:bg-ink/90 ${
+                  !phase ? "col-span-2" : ""
+                }`}
+              >
+                🏁 Finalizar partido
+              </button>
+            )}
+          </div>
+        )}
+
+        {!ended && (
+        <>
         <div className="flex gap-3">
           <label className="w-24">
             <span className="mb-1.5 block text-xs font-medium text-ink-soft">
@@ -144,6 +205,8 @@ export function LiveForm({
         <p className="text-center text-xs text-ink-soft">
           Cada registro avisa al instante a los papás del equipo.
         </p>
+        </>
+        )}
       </form>
 
       {/* Feed */}

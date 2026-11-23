@@ -2,8 +2,9 @@ import type Stripe from "stripe";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { schools, charges } from "@/db/schema";
+import { schools } from "@/db/schema";
 import { getStripe } from "@/lib/stripe";
+import { recordStripeChargePayment } from "@/lib/billing";
 
 /**
  * Webhook de Stripe. En local, reenvía los eventos con el Stripe CLI:
@@ -40,22 +41,26 @@ export async function POST(req: Request) {
       break;
     }
     // Un papá completó el pago de un cargo.
-    case "checkout.session.completed": {
+    case "checkout.session.completed":
+    case "checkout.session.async_payment_succeeded": {
       const session = event.data.object as Stripe.Checkout.Session;
       const chargeId = session.metadata?.chargeId;
-      if (chargeId && session.payment_status === "paid") {
-        await db
-          .update(charges)
-          .set({
-            status: "paid",
-            paidAt: new Date(),
-            stripeCheckoutId: session.id,
-            stripePaymentIntentId:
-              typeof session.payment_intent === "string"
-                ? session.payment_intent
-                : null,
-          })
-          .where(eq(charges.id, chargeId));
+      if (event.account && chargeId && session.payment_status === "paid" && session.amount_total !== null
+        && session.currency && typeof session.payment_intent === "string") {
+        await recordStripeChargePayment({
+          chargeId, stripeAccountId: event.account, amount: session.amount_total, currency: session.currency,
+          checkoutId: session.id, paymentIntentId: session.payment_intent,
+        });
+      }
+      break;
+    }
+    case "payment_intent.succeeded": {
+      const intent = event.data.object as Stripe.PaymentIntent;
+      if (event.account && intent.metadata.academyAutopay === "1" && intent.metadata.chargeId) {
+        await recordStripeChargePayment({
+          chargeId: intent.metadata.chargeId, stripeAccountId: event.account,
+          amount: intent.amount_received, currency: intent.currency, paymentIntentId: intent.id,
+        });
       }
       break;
     }

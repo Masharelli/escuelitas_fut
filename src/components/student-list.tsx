@@ -3,6 +3,7 @@ import Image from "next/image";
 
 import { Card } from "@/components/ui";
 import { deleteStudent } from "@/app/admin/alumnos/actions";
+import { TRAFFIC_LIGHT_LABELS, type TrafficLight } from "@/lib/billing";
 
 export type StudentRow = {
   id: string;
@@ -13,55 +14,78 @@ export type StudentRow = {
   guardianPhone: string | null;
   category?: { name: string } | null;
   team?: { name: string } | null;
+  /** Semáforo de pagos (verde/amarillo/rojo). Solo se muestra si viene. */
+  light?: TrafficLight;
+  scholarships?: string[];
+};
+
+const LIGHT_CLS: Record<TrafficLight, string> = {
+  green: "bg-emerald-500",
+  yellow: "bg-amber-400",
+  red: "bg-red-500",
 };
 
 /** Lista de alumnos en tarjeta, reutilizable (alumnos, equipo, categoría…). */
 export function StudentList({
   students,
   showBadges = true,
+  readOnly = false,
+  canDelete = true,
 }: {
   students: StudentRow[];
   showBadges?: boolean;
+  readOnly?: boolean;
+  canDelete?: boolean;
 }) {
   return (
     <Card className="p-0 sm:p-0">
       <ul className="divide-y divide-ink/10">
         {students.map((s) => (
           <li key={s.id} className="flex flex-wrap items-center gap-3 p-4 sm:gap-4">
-            <Link
-              href={`/admin/alumnos/${s.id}`}
+            <div
               className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4"
             >
               <Avatar name={s.firstName} photoUrl={s.photoUrl} />
               <div className="min-w-0">
-                <p className="truncate font-semibold text-ink">
-                  {s.firstName} {s.lastName}
+                <p className="flex items-center gap-2 truncate font-semibold text-ink">
+                  {readOnly ? `${s.firstName} ${s.lastName}` : <Link href={`/admin/alumnos/${s.id}`}>{s.firstName} {s.lastName}</Link>}
+                  {s.light && (
+                    <span
+                      title={readOnly ? s.light === "green" ? "Pago al corriente" : "Pago pendiente" : TRAFFIC_LIGHT_LABELS[s.light]}
+                      aria-label={readOnly ? s.light === "green" ? "Pago al corriente" : "Pago pendiente" : TRAFFIC_LIGHT_LABELS[s.light]}
+                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${LIGHT_CLS[s.light]}`}
+                    />
+                  )}
                 </p>
+                {s.light && !readOnly && (
+                  <p className="mt-0.5 text-xs text-ink-soft">{TRAFFIC_LIGHT_LABELS[s.light]}</p>
+                )}
                 {showBadges && (
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     {s.category && <Badge>{s.category.name}</Badge>}
                     {s.team && <Badge>{s.team.name}</Badge>}
+                    {s.scholarships?.map((label, index) => <Badge key={`${label}-${index}`}>Beca · {label}</Badge>)}
                     {!s.category && !s.team && (
                       <span className="text-xs text-ink-soft">Sin asignar</span>
                     )}
                   </div>
                 )}
               </div>
-            </Link>
+            </div>
             {s.guardianName && (
               <div className="hidden text-right text-sm text-ink-soft sm:block">
                 <p className="text-ink">{s.guardianName}</p>
                 {s.guardianPhone && <p className="text-xs">{s.guardianPhone}</p>}
               </div>
             )}
-            <div className="flex items-center gap-1">
+            {!readOnly && <div className="flex items-center gap-1">
               <Link
                 href={`/admin/alumnos/${s.id}/editar`}
                 className="rounded-full px-3 py-1.5 text-sm font-medium text-pitch transition hover:bg-pitch/10"
               >
                 Editar
               </Link>
-              <form action={deleteStudent}>
+              {canDelete && <form action={deleteStudent}>
                 <input type="hidden" name="id" value={s.id} />
                 <button
                   type="submit"
@@ -78,8 +102,8 @@ export function StudentList({
                     />
                   </svg>
                 </button>
-              </form>
-            </div>
+              </form>}
+            </div>}
           </li>
         ))}
       </ul>

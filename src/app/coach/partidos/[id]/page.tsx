@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { and, asc, eq } from "drizzle-orm";
 
 import { requireRole } from "@/lib/tenant";
@@ -7,7 +8,7 @@ import { assertTeamAccess } from "@/lib/coach";
 import { tenantDb } from "@/lib/tenant-db";
 import { students as studentsTable, matches as matchesTable } from "@/db/schema";
 import { formatKickoff, MATCH_STATUS_LABELS, type MatchStatus } from "@/lib/competition";
-import { getCallupsForMatch, type RsvpStatus } from "@/lib/callups";
+import { getCallupsForMatch, buildCallupPlayers } from "@/lib/callups";
 import { getTeamGuardianUsers } from "@/lib/guardians";
 import { PageHeader, Card } from "@/components/ui";
 import { CallupManager } from "@/components/callup-manager";
@@ -52,14 +53,10 @@ export default async function CoachMatchPage({
     minutesPlayed: statByStudent.get(s.id)?.minutesPlayed ?? 0,
   }));
 
+  const h = await headers();
+  const origin = h.get("origin") ?? `http://${h.get("host")}`;
   const callupRows = await getCallupsForMatch(membership.schoolId, match.id);
-  const callupByStudent = new Map(callupRows.map((c) => [c.studentId, c]));
-  const callupPlayers = roster.map((s) => ({
-    id: s.id,
-    name: `${s.firstName} ${s.lastName}`,
-    convoked: callupByStudent.has(s.id),
-    rsvp: (callupByStudent.get(s.id)?.rsvp ?? "pending") as RsvpStatus,
-  }));
+  const callupPlayers = buildCallupPlayers(match, roster, callupRows, origin);
 
   const scorekeeperCandidates = await getTeamGuardianUsers(match.teamId);
 

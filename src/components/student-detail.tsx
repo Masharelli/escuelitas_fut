@@ -6,6 +6,8 @@ export type StudentDetailData = {
   firstName: string;
   lastName: string;
   birthDate: string | null;
+  enrolledOn: string | null;
+  reenrolledOn: string | null;
   photoUrl: string | null;
   sex: string | null;
   nationality: string | null;
@@ -64,6 +66,8 @@ export function StudentDetail({
           ["Sexo", student.sex ? cap(student.sex) : null],
           ["Nacionalidad", student.nationality],
           ["CURP", student.curp],
+          ["Fecha de inscripción", formatDate(student.enrolledOn)],
+          ["Última reinscripción", formatDate(student.reenrolledOn)],
         ]}
       />
       <Section

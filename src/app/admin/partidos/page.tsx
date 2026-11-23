@@ -16,13 +16,19 @@ import {
   type MatchStatus,
 } from "@/lib/competition";
 import { PageHeader, Card } from "@/components/ui";
+import { FilterBar } from "@/components/filter-bar";
 import { CreateMatchForm } from "./forms";
 
-export default async function AdminPartidosPage() {
+export default async function AdminPartidosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ equipo?: string; torneo?: string; estado?: string }>;
+}) {
+  const { equipo, torneo, estado } = await searchParams;
   const { membership } = await requireRole(ADMIN_ROLES);
   const tdb = tenantDb(membership.schoolId);
 
-  const [matches, teams, tournaments] = await Promise.all([
+  const [allMatches, teams, tournaments] = await Promise.all([
     tdb.matches.findMany({
       with: { team: true },
       orderBy: [desc(matchesTable.kickoffAt)],
@@ -30,6 +36,13 @@ export default async function AdminPartidosPage() {
     tdb.teams.findMany({ orderBy: [asc(teamsTable.name)] }),
     tdb.tournaments.findMany({ orderBy: [asc(tournamentsTable.name)] }),
   ]);
+
+  const matches = allMatches.filter((m) => {
+    if (equipo && m.teamId !== equipo) return false;
+    if (torneo && m.tournamentId !== torneo) return false;
+    if (estado && m.status !== estado) return false;
+    return true;
+  });
 
   const upcoming = matches
     .filter((m) => m.status === "scheduled" || m.status === "postponed")
@@ -43,6 +56,9 @@ export default async function AdminPartidosPage() {
     value: t.id,
     label: t.name,
   }));
+  const statusOptions = (
+    Object.keys(MATCH_STATUS_LABELS) as MatchStatus[]
+  ).map((s) => ({ value: s, label: MATCH_STATUS_LABELS[s] }));
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -54,6 +70,13 @@ export default async function AdminPartidosPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="order-2 lg:order-1">
+          <FilterBar
+            selects={[
+              { key: "equipo", allLabel: "Todos los equipos", options: teamOptions },
+              { key: "torneo", allLabel: "Todos los torneos", options: tournamentOptions },
+              { key: "estado", allLabel: "Todos los estados", options: statusOptions },
+            ]}
+          />
           <h2 className="font-display text-lg font-bold">Próximos</h2>
           {upcoming.length === 0 ? (
             <p className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">

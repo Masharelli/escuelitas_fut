@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -37,7 +39,8 @@ export async function createSession(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Crear entrenamiento", formData, async () => {
   const parsed = createSchema.safeParse({
     teamId: formData.get("teamId"),
     kind: formData.get("kind") ?? "training",
@@ -91,6 +94,7 @@ export async function createSession(
       ? `/coach/equipos/${team.id}`
       : "/admin/asistencias"
   );
+  });
 }
 
 /**
@@ -102,7 +106,8 @@ export async function saveAttendance(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Registrar asistencias", formData, async () => {
   const sessionId = String(formData.get("sessionId") ?? "");
   if (!sessionId) return { error: "Sesión no encontrada" };
 
@@ -150,10 +155,12 @@ export async function saveAttendance(
   revalidatePath(`/coach/sesiones/${sessionId}`);
   revalidatePath("/admin/asistencias");
   return { ok: true };
+  });
 }
 
 export async function deleteSession(formData: FormData) {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Eliminar entrenamiento", formData, async () => {
   const sessionId = String(formData.get("sessionId") ?? "");
   if (!sessionId) redirect("/admin/asistencias");
 
@@ -171,4 +178,5 @@ export async function deleteSession(formData: FormData) {
       ? `/coach/equipos/${session.teamId}`
       : "/admin/asistencias"
   );
+  });
 }

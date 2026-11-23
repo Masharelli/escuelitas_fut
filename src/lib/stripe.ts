@@ -1,9 +1,9 @@
 import Stripe from "stripe";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import { schools, charges, guardianships, autopay } from "@/db/schema";
-import { notifyChargePaidById } from "@/lib/billing";
+import { notifyChargePaidById, recordStripeChargePayment } from "@/lib/billing";
 
 let client: Stripe | null = null;
 
@@ -17,6 +17,18 @@ export function getStripe(): Stripe {
   }
   if (!client) client = new Stripe(key);
   return client;
+}
+
+/** Expira un enlace abierto para poder cambiar el saldo o registrar un pago en caja. */
+export async function expireUnpaidCheckout(stripeAccountId: string | null | undefined, checkoutId: string) {
+  if (!stripeAccountId) return false;
+  const acct = { stripeAccount: stripeAccountId };
+  const stripe = getStripe();
+  const checkout = await stripe.checkout.sessions.retrieve(checkoutId, undefined, acct);
+  if (checkout.status === "expired") return true;
+  if (checkout.status !== "open") return false;
+  const expired = await stripe.checkout.sessions.expire(checkoutId, undefined, acct);
+  return expired.status === "expired";
 }
 
 /**
@@ -77,22 +89,16 @@ export async function confirmCheckoutForUser(
     undefined,
     { stripeAccount: school.stripeAccountId }
   );
-  if (session.payment_status === "paid") {
-    await db
-      .update(charges)
-      .set({
-        status: "paid",
-        paidAt: new Date(),
-        stripePaymentIntentId:
-          typeof session.payment_intent === "string"
-            ? session.payment_intent
-            : null,
-      })
-      .where(eq(charges.id, charge.id));
-    await notifyChargePaidById(charge.id);
-    return true;
-  }
-  return false;
+  if (session.payment_status !== "paid" || session.amount_total === null || !session.currency
+      || typeof session.payment_intent !== "string") return false;
+  const recorded = await recordStripeChargePayment({
+    chargeId: charge.id, stripeAccountId: school.stripeAccountId,
+    amount: session.amount_total, currency: session.currency,
+    checkoutId: session.id, paymentIntentId: session.payment_intent,
+  });
+  if (recorded) return true;
+  const updated = await db.query.charges.findFirst({ where: eq(charges.id, charge.id) });
+  return updated?.status === "paid" && updated.stripePaymentIntentId === session.payment_intent;
 }
 
 /**
@@ -174,9 +180,6 @@ export async function chargeAutopayForPeriod(
   const rows = await db
     .select({
       chargeId: charges.id,
-      amount: charges.amountCents,
-      currency: charges.currency,
-      customer: autopay.stripeCustomerId,
       pm: autopay.stripePaymentMethodId,
     })
     .from(charges)
@@ -187,6 +190,10 @@ export async function chargeAutopayForPeriod(
         eq(charges.kind, "monthly"),
         eq(charges.periodMonth, period),
         eq(charges.status, "pending"),
+        gt(charges.amountCents, 0),
+        isNull(charges.stripeCheckoutId),
+        isNull(charges.autopayAttemptedAt),
+        eq(autopay.schoolId, schoolId),
         eq(autopay.status, "active")
       )
     );
@@ -194,29 +201,45 @@ export async function chargeAutopayForPeriod(
   let charged = 0;
   for (const r of rows) {
     if (!r.pm) continue;
-    try {
-      const pi = await stripe.paymentIntents.create(
-        {
-          amount: r.amount,
-          currency: r.currency.toLowerCase(),
-          customer: r.customer,
-          payment_method: r.pm,
+    const paid = await db.transaction(async (tx) => {
+      const [charge] = await tx.select().from(charges)
+        .where(and(eq(charges.id, r.chargeId), eq(charges.status, "pending"),
+          isNull(charges.stripeCheckoutId), isNull(charges.autopayAttemptedAt)))
+        .for("update");
+      if (!charge || charge.amountCents <= 0 || !r.pm) return false;
+      const setup = await tx.query.autopay.findFirst({
+        where: and(eq(autopay.studentId, charge.studentId), eq(autopay.schoolId, schoolId), eq(autopay.status, "active")),
+      });
+      if (!setup?.stripePaymentMethodId) return false;
+
+      let pi;
+      try {
+        pi = await stripe.paymentIntents.create({
+          amount: charge.amountCents,
+          currency: charge.currency.toLowerCase(),
+          customer: setup.stripeCustomerId,
+          payment_method: setup.stripePaymentMethodId,
+          payment_method_types: ["card"],
           off_session: true,
           confirm: true,
-          metadata: { chargeId: r.chargeId },
-        },
-        acct
-      );
-      if (pi.status === "succeeded") {
-        await db
-          .update(charges)
-          .set({ status: "paid", paidAt: new Date(), stripePaymentIntentId: pi.id })
-          .where(eq(charges.id, r.chargeId));
-        await notifyChargePaidById(r.chargeId);
-        charged += 1;
+          metadata: { chargeId: charge.id, academyAutopay: "1" },
+        }, { ...acct, idempotencyKey: `academy-autopay-${charge.id}` });
+      } catch (error) {
+        // Una tarjeta rechazada queda pendiente para que el tutor pueda pagarla.
+        if (!(error instanceof Stripe.errors.StripeCardError)) throw error;
       }
-    } catch {
-      // Tarjeta rechazada / requiere autenticación: se queda pendiente.
+
+      await tx.update(charges).set({
+        autopayAttemptedAt: new Date(),
+        ...(pi?.status === "succeeded" ? {
+          status: "paid" as const, paidAt: new Date(), stripePaymentIntentId: pi.id,
+        } : pi?.status === "processing" ? { stripePaymentIntentId: pi.id } : {}),
+      }).where(eq(charges.id, charge.id));
+      return pi?.status === "succeeded";
+    });
+    if (paid) {
+      await notifyChargePaidById(r.chargeId);
+      charged += 1;
     }
   }
   return charged;

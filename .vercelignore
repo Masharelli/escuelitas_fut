@@ -1,0 +1,12 @@
+.env*
+.vercel
+.git
+node_modules
+.next
+.sst
+sst.config.ts
+sst-env.d.ts
+.open-next
+supabase/.temp
+public/uploads
+*.tsbuildinfo

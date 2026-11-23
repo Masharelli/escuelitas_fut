@@ -1,10 +1,9 @@
-import { getActiveMembership } from "@/lib/tenant";
-import { getMyChildren } from "@/lib/guardians";
+import { getGuardianMembership, getMyChildren } from "@/lib/guardians";
 import { PageHeader, EmptyState } from "@/components/ui";
 import { ChildrenGrid } from "../children-grid";
 
 export default async function MisHijosPage() {
-  const { session } = await getActiveMembership();
+  const { session } = await getGuardianMembership();
   const children = await getMyChildren(session.user.id);
 
   return (
@@ -21,7 +20,7 @@ export default async function MisHijosPage() {
       {children.length === 0 ? (
         <EmptyState
           title="Aún no vemos a tus hijos"
-          description="Pide a tu escuela que registre a tu hijo con este mismo correo y aparecerá aquí automáticamente."
+          description="Pide a tu escuela un enlace de invitación por cada hijo y acepta todos con la misma cuenta."
         />
       ) : (
         <ChildrenGrid kids={children} />

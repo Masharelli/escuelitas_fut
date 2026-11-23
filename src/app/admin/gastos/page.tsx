@@ -1,7 +1,6 @@
 import { asc, desc } from "drizzle-orm";
 
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
-import { requireFeature } from "@/lib/plan";
 import { tenantDb } from "@/lib/tenant-db";
 import {
   expenses as expensesTable,
@@ -10,11 +9,13 @@ import {
 import { formatMoney } from "@/lib/billing";
 import {
   EXPENSE_CATEGORY_LABELS,
+  EXPENSE_CATEGORY_OPTIONS,
   monthOf,
   sumExpenses,
   type ExpenseCategory,
 } from "@/lib/finance";
 import { PageHeader, Card } from "@/components/ui";
+import { FilterBar } from "@/components/filter-bar";
 import { CreateExpenseForm } from "./forms";
 import { deleteExpense } from "./actions";
 
@@ -29,25 +30,31 @@ function fmtDate(iso: string): string {
 export default async function GastosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ mes?: string; tipo?: string }>;
 }) {
   const { membership } = await requireRole(ADMIN_ROLES);
-  requireFeature(membership.school.plan, "expenses");
 
-  const { mes } = await searchParams;
+
+  if (membership.role !== "owner") {
+    const categories = await tenantDb(membership.schoolId).categories.findMany({ orderBy: [asc(categoriesTable.name)] });
+    return <div className="mx-auto w-full max-w-xl"><PageHeader eyebrow="Operación" title="Registrar gasto" subtitle="Registra el concepto, monto y fecha del gasto. El dueño revisará el movimiento." /><Card><CreateExpenseForm categories={categories.map((c) => ({ value: c.id, label: c.name }))} /></Card></div>;
+  }
+
+  const { mes, tipo } = await searchParams;
   const period = mes || monthOf(new Date());
 
   const tdb = tenantDb(membership.schoolId);
   const [expenses, categories] = await Promise.all([
     tdb.expenses.findMany({
-      with: { category: true },
+      with: { sportsCategory: true },
       orderBy: [desc(expensesTable.spentOn)],
     }),
     tdb.categories.findMany({ orderBy: [asc(categoriesTable.name)] }),
   ]);
 
   const monthExpenses = expenses.filter(
-    (e) => e.spentOn.slice(0, 7) === period
+    (e) =>
+      e.spentOn.slice(0, 7) === period && (!tipo || e.category === tipo)
   );
   const monthTotal = sumExpenses(expenses, period);
   const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
@@ -69,23 +76,16 @@ export default async function GastosPage({
                 {formatMoney(monthTotal)}
               </p>
             </div>
-            <form method="get" className="flex items-end gap-2">
-              <label className="text-xs text-ink-soft">
-                <span className="mb-1 block">Mes</span>
-                <input
-                  type="month"
-                  name="mes"
-                  defaultValue={period}
-                  className="rounded-lg border border-ink/15 bg-white px-2.5 py-2 text-sm text-ink shadow-sm"
-                />
-              </label>
-              <button
-                type="submit"
-                className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink"
-              >
-                Filtrar
-              </button>
-            </form>
+            <FilterBar
+              month={{ key: "mes", defaultValue: period }}
+              selects={[
+                {
+                  key: "tipo",
+                  allLabel: "Todas las categorías",
+                  options: EXPENSE_CATEGORY_OPTIONS,
+                },
+              ]}
+            />
           </div>
 
           {monthExpenses.length === 0 ? (
@@ -106,9 +106,8 @@ export default async function GastosPage({
                     <p className="truncate text-xs text-ink-soft">
                       {EXPENSE_CATEGORY_LABELS[e.category as ExpenseCategory]} ·{" "}
                       {fmtDate(e.spentOn)}
-                      {e.category ? "" : ""}
-                      {e.categoryId && e.category
-                        ? ` · ${e.category.name}`
+                      {e.sportsCategory
+                        ? ` · ${e.sportsCategory.name}`
                         : ""}
                     </p>
                   </div>

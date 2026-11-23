@@ -11,6 +11,7 @@ import { PageHeader, SecondaryLink } from "@/components/ui";
 import { StudentDetail } from "@/components/student-detail";
 import { StudentStats } from "@/components/student-stats";
 import { GuardianInvite } from "../guardian-invite";
+import { StudentBilling } from "./student-billing";
 
 export default async function AlumnoFichaPage({
   params,
@@ -64,6 +65,13 @@ export default async function AlumnoFichaPage({
       </div>
 
       <StudentDetail student={student} />
+      <StudentBilling
+        schoolId={membership.schoolId}
+        studentId={student.id}
+        canManageScholarships={membership.role === "owner"}
+        scholarshipPaymentDay={student.scholarshipPaymentDay}
+        schoolPaymentDay={membership.school.paymentDueDay}
+      />
 
       {stats && (
         <div className="mt-5">

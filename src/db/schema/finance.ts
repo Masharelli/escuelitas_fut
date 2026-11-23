@@ -56,7 +56,7 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     fields: [expenses.schoolId],
     references: [schools.id],
   }),
-  category: one(categories, {
+  sportsCategory: one(categories, {
     fields: [expenses.categoryId],
     references: [categories.id],
   }),

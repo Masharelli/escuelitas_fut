@@ -49,12 +49,13 @@ export default async function SeasonDetailPage({
   const { membership } = await requireRole(ADMIN_ROLES);
   if (membership.school.kind !== "league") redirect("/admin");
   const tdb = tenantDb(membership.schoolId);
+  const isOwner = membership.role === "owner";
   const cfg = sportConfig(membership.school.sport as Sport);
   const school = membership.school;
 
   // Al volver del onboarding de Stripe, consulta el estado real.
   let chargesEnabled = school.stripeChargesEnabled;
-  if (connected && school.stripeAccountId && !chargesEnabled) {
+  if (isOwner && connected && school.stripeAccountId && !chargesEnabled) {
     const st = await refreshConnectStatus(school.id, school.stripeAccountId);
     chargesEnabled = st.chargesEnabled;
   }
@@ -249,7 +250,7 @@ export default async function SeasonDetailPage({
             <span className="rounded-full bg-pitch/15 px-2.5 py-0.5 text-xs font-medium text-pitch">
               Cobros en línea activos ✓
             </span>
-          ) : (
+          ) : isOwner ? (
             <form action={connectLeagueStripe}>
               <input type="hidden" name="seasonId" value={season.id} />
               <button
@@ -259,10 +260,10 @@ export default async function SeasonDetailPage({
                 {school.stripeAccountId ? "Terminar configuración" : "Conectar pagos"}
               </button>
             </form>
-          )}
+          ) : null}
         </div>
 
-        <form action={setRegistrationFee} className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+        {isOwner && <form action={setRegistrationFee} className="mb-3 flex flex-wrap items-center gap-2 text-sm">
           <input type="hidden" name="seasonId" value={season.id} />
           <span className="text-ink-soft">Cuota por equipo $</span>
           <input
@@ -280,9 +281,9 @@ export default async function SeasonDetailPage({
           >
             Guardar
           </button>
-        </form>
+        </form>}
 
-        {season.registrationFeeCents && teamIds.length > 0 ? (
+        {isOwner && season.registrationFeeCents && teamIds.length > 0 ? (
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <form action={generateRegistration}>
               <input type="hidden" name="seasonId" value={season.id} />
@@ -303,7 +304,7 @@ export default async function SeasonDetailPage({
             )}
           </div>
         ) : (
-          <p className="mb-1 text-xs text-ink-soft">
+          isOwner && <p className="mb-1 text-xs text-ink-soft">
             Define la cuota e inscribe equipos para generar las inscripciones.
           </p>
         )}
@@ -347,7 +348,7 @@ export default async function SeasonDetailPage({
                             Marcar pagado
                           </button>
                         </form>
-                        <form action={cancelRegistrationCharge}>
+                        {isOwner && <form action={cancelRegistrationCharge}>
                           <input type="hidden" name="id" value={c.id} />
                           <input type="hidden" name="seasonId" value={season.id} />
                           <button
@@ -355,8 +356,7 @@ export default async function SeasonDetailPage({
                             className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:text-ink"
                           >
                             Cancelar
-                          </button>
-                        </form>
+                          </button></form>}
                       </>
                     )}
                   </div>

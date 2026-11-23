@@ -1,6 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gt } from "drizzle-orm";
 
 import { db } from "@/db";
+import { INVITATION_TTL_MS, isPendingInvitation } from "@/lib/invitation-validity";
 import {
   guardianInvitations,
   guardianships,
@@ -22,19 +23,18 @@ export async function createInvitation(
   const existing = await db.query.guardianInvitations.findFirst({
     where: and(
       eq(guardianInvitations.studentId, studentId),
+      eq(guardianInvitations.schoolId, schoolId),
       eq(guardianInvitations.status, "pending")
     ),
   });
   if (existing) {
-    // Mantén el correo de referencia al día si el admin lo cambió.
-    if (e && existing.email !== e) {
-      await db
-        .update(guardianInvitations)
-        .set({ email: e })
-        .where(eq(guardianInvitations.id, existing.id));
-      return { ...existing, email: e };
-    }
-    return existing;
+    if (existing.email === e && isPendingInvitation(existing)) return existing;
+    // Cambiar el destinatario o renovar un enlace invalida el token anterior.
+    const [renewed] = await db.update(guardianInvitations)
+      .set({ email: e, token: crypto.randomUUID(), createdAt: new Date() })
+      .where(and(eq(guardianInvitations.id, existing.id), eq(guardianInvitations.status, "pending")))
+      .returning();
+    if (renewed) return renewed;
   }
 
   const [created] = await db
@@ -46,12 +46,13 @@ export async function createInvitation(
 
 /** Invitación por token, con el alumno y la escuela para mostrar al tutor. */
 export async function getInvitationByToken(token: string) {
-  return db.query.guardianInvitations.findFirst({
+  const inv = await db.query.guardianInvitations.findFirst({
     where: eq(guardianInvitations.token, token),
     with: {
       student: { with: { category: true, team: true, tenant: true } },
     },
   });
+  return inv && isPendingInvitation(inv) ? inv : null;
 }
 
 /** Invitaciones de un alumno (más recientes primero) para la vista de admin. */
@@ -68,29 +69,25 @@ export async function getStudentInvitations(studentId: string) {
  * "padre" en la escuela. Idempotente. Devuelve el `studentId` para redirigir.
  */
 export async function acceptInvitation(token: string, userId: string) {
-  const inv = await db.query.guardianInvitations.findFirst({
-    where: eq(guardianInvitations.token, token),
-  });
-  if (!inv || inv.status === "revoked") return null;
-
-  await db
-    .insert(guardianships)
-    .values({ userId, studentId: inv.studentId })
-    .onConflictDoNothing();
-
-  await db
-    .insert(memberships)
-    .values({ userId, schoolId: inv.schoolId, role: "parent" })
-    .onConflictDoNothing();
-
-  if (inv.status !== "accepted") {
-    await db
-      .update(guardianInvitations)
+  return db.transaction(async (tx) => {
+    // UPDATE condicional: dos cuentas no pueden consumir el mismo enlace.
+    const [inv] = await tx.update(guardianInvitations)
       .set({ status: "accepted", acceptedByUserId: userId, acceptedAt: new Date() })
-      .where(eq(guardianInvitations.id, inv.id));
-  }
-
-  return inv.studentId;
+      .where(and(
+        eq(guardianInvitations.token, token),
+        eq(guardianInvitations.status, "pending"),
+        gt(guardianInvitations.createdAt, new Date(Date.now() - INVITATION_TTL_MS))
+      )).returning();
+    if (!inv) {
+      const accepted = await tx.query.guardianInvitations.findFirst({
+        where: and(eq(guardianInvitations.token, token), eq(guardianInvitations.status, "accepted"), eq(guardianInvitations.acceptedByUserId, userId)),
+      });
+      return accepted?.studentId ?? null;
+    }
+    await tx.insert(guardianships).values({ userId, studentId: inv.studentId }).onConflictDoNothing();
+    await tx.insert(memberships).values({ userId, schoolId: inv.schoolId, role: "parent" }).onConflictDoNothing();
+    return inv.studentId;
+  });
 }
 
 /** Revoca una invitación pendiente (sólo dentro de la escuela del admin). */

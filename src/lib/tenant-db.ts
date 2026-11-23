@@ -1,9 +1,12 @@
-import { and, eq, type SQL } from "drizzle-orm";
+import { and, eq, inArray, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
+import { assertStudentRoster } from "@/lib/roster";
 import {
   categories,
   charges,
+  discounts,
+  studentDiscounts,
   matches,
   matchPlayerStats,
   plans,
@@ -110,6 +113,32 @@ export function tenantDb(schoolId: string) {
               .onConflictDoNothing()
               .returning()
           : [],
+    },
+    discounts: {
+      ...makeReads(db.query.discounts, discounts, schoolId),
+      insert: (values: Omit<typeof discounts.$inferInsert, "schoolId">) =>
+        db.insert(discounts).values({ ...values, schoolId }),
+      updateById: (id: string, values: Partial<typeof discounts.$inferInsert>) =>
+        db.update(discounts).set(values).where(rowIn(discounts, id, schoolId)),
+      deleteById: (id: string) =>
+        db.delete(discounts).where(rowIn(discounts, id, schoolId)),
+    },
+    studentDiscounts: {
+      ...makeReads(db.query.studentDiscounts, studentDiscounts, schoolId),
+      /** Asigna alumnos a una promoción ignorando duplicados. */
+      insertManyIgnoringDuplicates: (
+        rows: Omit<typeof studentDiscounts.$inferInsert, "schoolId">[]
+      ) =>
+        rows.length
+          ? db
+              .insert(studentDiscounts)
+              .values(rows.map((r) => ({ ...r, schoolId })))
+              .onConflictDoNothing()
+          : Promise.resolve(),
+      deleteById: (id: string) =>
+        db
+          .delete(studentDiscounts)
+          .where(rowIn(studentDiscounts, id, schoolId)),
     },
     tournaments: {
       ...makeReads(db.query.tournaments, tournaments, schoolId),
@@ -238,19 +267,32 @@ export function tenantDb(schoolId: string) {
           "schoolId" | "matchId"
         >[]
       ) => {
-        await db
-          .delete(leagueMatchStats)
-          .where(
-            and(
-              eq(leagueMatchStats.matchId, matchId),
-              eq(leagueMatchStats.schoolId, schoolId)
-            )
-          );
-        if (rows.length) {
-          await db
-            .insert(leagueMatchStats)
-            .values(rows.map((r) => ({ ...r, schoolId, matchId })));
-        }
+        await db.transaction(async (tx) => {
+          const event = await tx.query.leagueMatches.findFirst({ where: and(eq(leagueMatches.id, matchId), eq(leagueMatches.schoolId, schoolId)) });
+          if (!event) throw new Error("Partido no encontrado");
+          if (rows.length) {
+            const players = await tx.query.rosterPlayers.findMany({
+              where: and(eq(rosterPlayers.schoolId, schoolId), inArray(rosterPlayers.teamId, [event.homeTeamId, event.awayTeamId]), inArray(rosterPlayers.id, rows.map((r) => r.playerId))),
+              columns: { id: true, teamId: true },
+            });
+            if (new Set(rows.map((r) => r.playerId)).size !== rows.length || rows.some((r) => !players.some((p) => p.id === r.playerId && p.teamId === r.teamId))) {
+              throw new Error("La lista contiene jugadores inválidos para este partido");
+            }
+          }
+          await tx
+            .delete(leagueMatchStats)
+            .where(
+              and(
+                eq(leagueMatchStats.matchId, matchId),
+                eq(leagueMatchStats.schoolId, schoolId)
+              )
+            );
+          if (rows.length) {
+            await tx
+              .insert(leagueMatchStats)
+              .values(rows.map((r) => ({ ...r, schoolId, matchId })));
+          }
+        });
       },
     },
     leagueCharges: {
@@ -287,19 +329,24 @@ export function tenantDb(schoolId: string) {
           "schoolId" | "matchId"
         >[]
       ) => {
-        await db
-          .delete(matchPlayerStats)
-          .where(
-            and(
-              eq(matchPlayerStats.matchId, matchId),
-              eq(matchPlayerStats.schoolId, schoolId)
-            )
-          );
-        if (rows.length) {
-          await db
-            .insert(matchPlayerStats)
-            .values(rows.map((r) => ({ ...r, schoolId, matchId })));
-        }
+        await db.transaction(async (tx) => {
+          const event = await tx.query.matches.findFirst({ where: and(eq(matches.id, matchId), eq(matches.schoolId, schoolId)) });
+          if (!event) throw new Error("Evento no encontrado");
+          await assertStudentRoster(schoolId, event.teamId, rows.map((r) => r.studentId), tx);
+          await tx
+            .delete(matchPlayerStats)
+            .where(
+              and(
+                eq(matchPlayerStats.matchId, matchId),
+                eq(matchPlayerStats.schoolId, schoolId)
+              )
+            );
+          if (rows.length) {
+            await tx
+              .insert(matchPlayerStats)
+              .values(rows.map((r) => ({ ...r, schoolId, matchId })));
+          }
+        });
       },
     },
     sessions: {
@@ -327,19 +374,24 @@ export function tenantDb(schoolId: string) {
           "schoolId" | "sessionId"
         >[]
       ) => {
-        await db
-          .delete(attendance)
-          .where(
-            and(
-              eq(attendance.sessionId, sessionId),
-              eq(attendance.schoolId, schoolId)
-            )
-          );
-        if (rows.length) {
-          await db
-            .insert(attendance)
-            .values(rows.map((r) => ({ ...r, schoolId, sessionId })));
-        }
+        await db.transaction(async (tx) => {
+          const event = await tx.query.trainingSessions.findFirst({ where: and(eq(trainingSessions.id, sessionId), eq(trainingSessions.schoolId, schoolId)) });
+          if (!event) throw new Error("Evento no encontrado");
+          await assertStudentRoster(schoolId, event.teamId, rows.map((r) => r.studentId), tx);
+          await tx
+            .delete(attendance)
+            .where(
+              and(
+                eq(attendance.sessionId, sessionId),
+                eq(attendance.schoolId, schoolId)
+              )
+            );
+          if (rows.length) {
+            await tx
+              .insert(attendance)
+              .values(rows.map((r) => ({ ...r, schoolId, sessionId })));
+          }
+        });
       },
     },
     expenses: {
@@ -360,6 +412,8 @@ type TenantTable =
   | typeof categories
   | typeof plans
   | typeof charges
+  | typeof discounts
+  | typeof studentDiscounts
   | typeof tournaments
   | typeof matches
   | typeof matchPlayerStats

@@ -4,6 +4,10 @@ import { PageHeader } from "@/components/ui";
 import { StudentForm } from "../student-form";
 import { getFormOptions } from "../options";
 import { createStudent } from "../actions";
+import { asc, eq } from "drizzle-orm";
+import { discounts } from "@/db/schema";
+import { scholarshipLabel } from "@/lib/billing";
+import { billingDate } from "@/lib/billing-rules";
 
 export default async function NuevoAlumnoPage({
   searchParams,
@@ -13,6 +17,10 @@ export default async function NuevoAlumnoPage({
   const { team } = await searchParams;
   const { membership } = await requireRole(ADMIN_ROLES);
   const { categories, teams } = await getFormOptions(membership.schoolId);
+  const scholarships = membership.role === "owner"
+    ? await tenantDb(membership.schoolId).discounts.findMany({
+      where: eq(discounts.active, true), orderBy: [asc(discounts.name)],
+    }) : [];
 
   // Si llegamos desde un equipo, preseleccionamos ese equipo y su categoría.
   let defaultTeamId: string | undefined;
@@ -39,6 +47,8 @@ export default async function NuevoAlumnoPage({
         submitLabel="Registrar alumno"
         defaultCategoryId={defaultCategoryId}
         defaultTeamId={defaultTeamId}
+        defaultEnrolledOn={billingDate()}
+        scholarships={scholarships.map((discount) => ({ value: discount.id, label: scholarshipLabel(discount) }))}
       />
     </div>
   );

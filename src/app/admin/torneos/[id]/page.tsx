@@ -18,8 +18,13 @@ import {
   type MatchStatus,
 } from "@/lib/competition";
 import { PageHeader, Card } from "@/components/ui";
-import { AddStandingForm } from "../forms";
-import { updateStanding, deleteStanding, deleteTournament } from "../actions";
+import { AddStandingForm, ResultsImageForm } from "../forms";
+import {
+  updateStanding,
+  deleteStanding,
+  deleteTournament,
+  removeResultsImage,
+} from "../actions";
 
 export default async function TorneoDetailPage({
   params,
@@ -136,6 +141,35 @@ export default async function TorneoDetailPage({
         <p className="mb-3 text-sm font-semibold text-ink">Agregar equipo a la tabla</p>
         <AddStandingForm tournamentId={tournament.id} />
       </Card>
+
+      {/* Foto de resultados que publica la liga */}
+      <h2 className="mt-8 font-display text-lg font-bold">Resultados de la liga</h2>
+      <p className="mt-1 mb-3 text-xs text-ink-soft">
+        Sube la foto de la tabla o los resultados oficiales que publica la liga.
+      </p>
+      {tournament.resultsImageUrl ? (
+        <div className="space-y-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={tournament.resultsImageUrl}
+            alt={`Resultados de ${tournament.name}`}
+            className="max-h-[520px] w-auto max-w-full rounded-2xl border border-ink/10 shadow-sm"
+          />
+          <form action={removeResultsImage}>
+            <input type="hidden" name="tournamentId" value={tournament.id} />
+            <button
+              type="submit"
+              className="rounded-full px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:bg-red-50 hover:text-red-600"
+            >
+              Quitar imagen
+            </button>
+          </form>
+        </div>
+      ) : (
+        <Card>
+          <ResultsImageForm tournamentId={tournament.id} />
+        </Card>
+      )}
 
       {/* Partidos del torneo */}
       <h2 className="mt-8 font-display text-lg font-bold">Partidos de este torneo</h2>

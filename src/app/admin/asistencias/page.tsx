@@ -14,19 +14,31 @@ import {
   type SessionKind,
 } from "@/lib/attendance";
 import { PageHeader, Card } from "@/components/ui";
+import { FilterBar } from "@/components/filter-bar";
 import { CreateSessionForm } from "./forms";
 
-export default async function AsistenciasPage() {
+export default async function AsistenciasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ equipo?: string; tipo?: string }>;
+}) {
+  const { equipo, tipo } = await searchParams;
   const { membership } = await requireRole(ADMIN_ROLES);
   const tdb = tenantDb(membership.schoolId);
 
-  const [sessions, teams] = await Promise.all([
+  const [allSessions, teams] = await Promise.all([
     tdb.sessions.findMany({
       with: { team: true, attendance: { columns: { status: true } } },
       orderBy: [desc(sessionsTable.startsAt)],
     }),
     tdb.teams.findMany({ orderBy: [asc(teamsTable.name)] }),
   ]);
+
+  const sessions = allSessions.filter((s) => {
+    if (equipo && s.teamId !== equipo) return false;
+    if (tipo && s.kind !== tipo) return false;
+    return true;
+  });
 
   const now = new Date().getTime();
   const upcoming = sessions
@@ -35,6 +47,9 @@ export default async function AsistenciasPage() {
   const past = sessions.filter((s) => s.startsAt.getTime() < now);
 
   const teamOptions = teams.map((t) => ({ value: t.id, label: t.name }));
+  const kindOptions = (
+    Object.keys(SESSION_KIND_LABELS) as SessionKind[]
+  ).map((k) => ({ value: k, label: SESSION_KIND_LABELS[k] }));
 
   return (
     <div className="mx-auto w-full max-w-5xl">
@@ -46,6 +61,12 @@ export default async function AsistenciasPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="order-2 lg:order-1">
+          <FilterBar
+            selects={[
+              { key: "equipo", allLabel: "Todos los equipos", options: teamOptions },
+              { key: "tipo", allLabel: "Todos los tipos", options: kindOptions },
+            ]}
+          />
           <h2 className="font-display text-lg font-bold">Próximas</h2>
           {upcoming.length === 0 ? (
             <p className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">

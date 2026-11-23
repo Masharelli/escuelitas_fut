@@ -28,7 +28,7 @@ import { users } from "./auth";
 /** Tipo de cobro. Reutilizado por `plans` y `charges`. */
 export const chargeKind = pgEnum("charge_kind", [
   "monthly", // cuota mensual recurrente
-  "enrollment", // inscripción única
+  "enrollment", // inscripción inicial o renovación anual
   "event", // torneo / evento puntual
   "product", // uniforme / artículo
 ]);
@@ -51,6 +51,7 @@ export const plans = pgTable("plans", {
   }),
   description: text("description"),
   active: boolean("active").notNull().default(true),
+  annualRenewalStartsOn: date("annual_renewal_starts_on", { mode: "string" }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
 
@@ -111,6 +112,10 @@ export const charges = pgTable(
     currency: text("currency").notNull().default("MXN"),
     // Periodo "YYYY-MM" para cuotas mensuales; null para cobros únicos.
     periodMonth: text("period_month"),
+    renewalYear: integer("renewal_year"),
+    baseAmountCents: integer("base_amount_cents"),
+    scholarshipName: text("scholarship_name"),
+    autopayAttemptedAt: timestamp("autopay_attempted_at", { mode: "date" }),
     status: chargeStatus("status").notNull().default("pending"),
     dueDate: date("due_date", { mode: "string" }),
     paidAt: timestamp("paid_at", { mode: "date" }),
@@ -127,7 +132,70 @@ export const charges = pgTable(
       t.planId,
       t.periodMonth
     ),
+    uniqueIndex("charges_student_renewal_year_uq").on(t.studentId, t.renewalYear),
   ]
+);
+
+/**
+ * Becas y promociones (descuentos). Una promoción es un descuento porcentual
+ * (beca 100% = gratis) o de monto fijo que se asigna a uno o varios alumnos y
+ * se aplica al generar sus cuotas mensuales.
+ */
+export const discountKind = pgEnum("discount_kind", ["percent", "fixed"]);
+
+export const discounts = pgTable("discounts", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  schoolId: text("school_id")
+    .notNull()
+    .references(() => schools.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  kind: discountKind("kind").notNull(),
+  // percent: 1–100; fixed: centavos.
+  value: integer("value").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+export const studentDiscounts = pgTable(
+  "student_discounts",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    schoolId: text("school_id")
+      .notNull()
+      .references(() => schools.id, { onDelete: "cascade" }),
+    discountId: text("discount_id")
+      .notNull()
+      .references(() => discounts.id, { onDelete: "cascade" }),
+    studentId: text("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("student_discounts_uq").on(t.discountId, t.studentId),
+  ]
+);
+
+export const discountsRelations = relations(discounts, ({ many }) => ({
+  students: many(studentDiscounts),
+}));
+
+export const studentDiscountsRelations = relations(
+  studentDiscounts,
+  ({ one }) => ({
+    discount: one(discounts, {
+      fields: [studentDiscounts.discountId],
+      references: [discounts.id],
+    }),
+    student: one(students, {
+      fields: [studentDiscounts.studentId],
+      references: [students.id],
+    }),
+  })
 );
 
 export const autopayStatus = pgEnum("autopay_status", [

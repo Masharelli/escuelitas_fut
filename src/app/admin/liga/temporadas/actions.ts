@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -9,7 +11,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
-import { seasonTeams, leagueMatches, schools } from "@/db/schema";
+import { seasonTeams, leagueMatches, leagueCharges, schools } from "@/db/schema";
 import { generateRoundRobin } from "@/lib/league";
 import { generateRegistrationCharges } from "@/lib/league-billing";
 import { getStripe } from "@/lib/stripe";
@@ -35,7 +37,8 @@ export async function createSeason(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Crear temporada", formData, async () => {
   const parsed = seasonSchema.safeParse({
     name: formData.get("name"),
     status: formData.get("status") ?? "active",
@@ -55,19 +58,23 @@ export async function createSeason(
 
   revalidatePath("/admin/liga/temporadas");
   return { ok: true };
+  });
 }
 
 export async function deleteSeason(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Eliminar temporada", formData, async () => {
   const id = String(formData.get("id") ?? "");
   if (id) {
     await tenantDb(membership.schoolId).seasons.deleteById(id);
   }
   revalidatePath("/admin/liga/temporadas");
+  });
 }
 
 export async function setSeasonStatus(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Cambiar estado de temporada", formData, async () => {
   const id = String(formData.get("id") ?? "");
   const status = String(formData.get("status") ?? "");
   if (id && (SEASON_STATUSES as readonly string[]).includes(status)) {
@@ -76,11 +83,13 @@ export async function setSeasonStatus(formData: FormData) {
     });
     revalidateSeason(id);
   }
+  });
 }
 
 /** Inscribe un equipo a una temporada (idempotente: ignora si ya está). */
 export async function registerTeam(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Inscribir equipo en temporada", formData, async () => {
   const seasonId = String(formData.get("seasonId") ?? "");
   const teamId = String(formData.get("teamId") ?? "");
   if (!seasonId || !teamId) return;
@@ -102,16 +111,19 @@ export async function registerTeam(formData: FormData) {
     await tdb.seasonTeams.insert({ seasonId, teamId });
   }
   revalidateSeason(seasonId);
+  });
 }
 
 export async function unregisterTeam(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Retirar equipo de temporada", formData, async () => {
   const id = String(formData.get("id") ?? "");
   const seasonId = String(formData.get("seasonId") ?? "");
   if (id) {
     await tenantDb(membership.schoolId).seasonTeams.deleteById(id);
   }
   revalidateSeason(seasonId || undefined);
+  });
 }
 
 /**
@@ -120,7 +132,8 @@ export async function unregisterTeam(formData: FormData) {
  * borrarlo) ni si hay menos de 2 equipos.
  */
 export async function generateSchedule(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Generar calendario", formData, async () => {
   const seasonId = String(formData.get("seasonId") ?? "");
   if (!seasonId) return;
   const tdb = tenantDb(membership.schoolId);
@@ -151,15 +164,18 @@ export async function generateSchedule(formData: FormData) {
     }))
   );
   revalidateSeason(seasonId);
+  });
 }
 
 export async function clearSchedule(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Borrar calendario", formData, async () => {
   const seasonId = String(formData.get("seasonId") ?? "");
   if (seasonId) {
     await tenantDb(membership.schoolId).leagueMatches.deleteBySeason(seasonId);
     revalidateSeason(seasonId);
   }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +184,8 @@ export async function clearSchedule(formData: FormData) {
 
 /** Define la cuota de inscripción por equipo de la temporada (vacío = sin cuota). */
 export async function setRegistrationFee(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Definir precio de torneo", formData, async () => {
   const seasonId = String(formData.get("seasonId") ?? "");
   if (!seasonId) return;
   const raw = String(formData.get("fee") ?? "").trim();
@@ -177,32 +194,38 @@ export async function setRegistrationFee(formData: FormData) {
     registrationFeeCents: cents && cents > 0 ? cents : null,
   });
   revalidateSeason(seasonId);
+  });
 }
 
 /** Genera los cargos de inscripción de los equipos inscritos (idempotente). */
 export async function generateRegistration(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Generar cargos de torneo", formData, async () => {
   const seasonId = String(formData.get("seasonId") ?? "");
   if (!seasonId) return;
   await generateRegistrationCharges(membership.schoolId, seasonId);
   revalidateSeason(seasonId);
+  });
 }
 
 export async function markRegistrationPaid(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Registrar pago de torneo", formData, async () => {
   const id = String(formData.get("id") ?? "");
   const seasonId = String(formData.get("seasonId") ?? "");
   if (id) {
-    await tenantDb(membership.schoolId).leagueCharges.updateById(id, {
+    await db.update(leagueCharges).set({
       status: "paid",
       paidAt: new Date(),
-    });
+    }).where(and(eq(leagueCharges.id, id), eq(leagueCharges.schoolId, membership.schoolId), eq(leagueCharges.status, "pending")));
   }
   revalidateSeason(seasonId || undefined);
+  });
 }
 
 export async function cancelRegistrationCharge(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Cancelar cargo de torneo", formData, async () => {
   const id = String(formData.get("id") ?? "");
   const seasonId = String(formData.get("seasonId") ?? "");
   if (id) {
@@ -211,6 +234,7 @@ export async function cancelRegistrationCharge(formData: FormData) {
     });
   }
   revalidateSeason(seasonId || undefined);
+  });
 }
 
 /**
@@ -218,7 +242,8 @@ export async function cancelRegistrationCharge(formData: FormData) {
  * temporada. Igual que en la academia, la liga cobra a su propia cuenta.
  */
 export async function connectLeagueStripe(formData: FormData) {
-  const { membership } = await requireRole(["owner", "admin"]);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Configurar pagos de liga", formData, async () => {
   const seasonId = String(formData.get("seasonId") ?? "");
   const school = await db.query.schools.findFirst({
     where: eq(schools.id, membership.schoolId),
@@ -255,6 +280,7 @@ export async function connectLeagueStripe(formData: FormData) {
     type: "account_onboarding",
   });
   redirect(link.url);
+  });
 }
 
 /**
@@ -263,29 +289,14 @@ export async function connectLeagueStripe(formData: FormData) {
  * listas separadas por coma; los valores como stat_<playerId>_<clave>.
  */
 export async function saveMatchStats(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Guardar estadísticas de liga", formData, async () => {
   const matchId = String(formData.get("matchId") ?? "");
   const seasonId = String(formData.get("seasonId") ?? "");
   if (!matchId) return;
   const tdb = tenantDb(membership.schoolId);
   const match = await tdb.leagueMatches.findById(matchId);
   if (!match) return;
-
-  // Marcador (si es válido, marca el partido como jugado).
-  const home = Number(formData.get("homeScore"));
-  const away = Number(formData.get("awayScore"));
-  if (
-    Number.isInteger(home) &&
-    Number.isInteger(away) &&
-    home >= 0 &&
-    away >= 0
-  ) {
-    await tdb.leagueMatches.updateById(matchId, {
-      homeScore: home,
-      awayScore: away,
-      status: "played",
-    });
-  }
 
   // Estadísticas por jugador.
   const statKeys = String(formData.get("statKeys") ?? "")
@@ -312,15 +323,33 @@ export async function saveMatchStats(formData: FormData) {
     .filter((r): r is { playerId: string; teamId: string; stats: Record<string, number> } => r !== null);
 
   await tdb.leagueMatchStats.replaceForMatch(matchId, rows);
+  // Marcador (si es válido, marca el partido como jugado).
+  const home = Number(formData.get("homeScore"));
+  const away = Number(formData.get("awayScore"));
+  if (
+    Number.isInteger(home) &&
+    Number.isInteger(away) &&
+    home >= 0 &&
+    away >= 0
+  ) {
+    await tdb.leagueMatches.updateById(matchId, {
+      homeScore: home,
+      awayScore: away,
+      status: "played",
+    });
+  }
+
   revalidateSeason(seasonId);
   if (seasonId) {
     revalidatePath(`/admin/liga/temporadas/${seasonId}/partido/${matchId}`);
   }
+  });
 }
 
 /** Guarda el marcador de un partido de liga y lo marca como jugado. */
 export async function saveLeagueResult(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Guardar resultado de liga", formData, async () => {
   const matchId = String(formData.get("matchId") ?? "");
   const seasonId = String(formData.get("seasonId") ?? "");
   const home = Number(formData.get("homeScore"));
@@ -340,4 +369,5 @@ export async function saveLeagueResult(formData: FormData) {
     status: "played",
   });
   revalidateSeason(seasonId || undefined);
+  });
 }

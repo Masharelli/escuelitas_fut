@@ -53,6 +53,8 @@ export const tournaments = pgTable("tournaments", {
   }),
   startsOn: date("starts_on", { mode: "string" }),
   endsOn: date("ends_on", { mode: "string" }),
+  // Foto de la tabla oficial que publica la liga externa.
+  resultsImageUrl: text("results_image_url"),
   status: tournamentStatus("status").notNull().default("active"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });

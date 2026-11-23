@@ -13,5 +13,5 @@ export async function acceptStaffInvitationAction(formData: FormData) {
   const session = await requireAuth();
   const schoolId = await acceptStaffInvitation(token, session.user.id);
 
-  redirect(schoolId ? "/coach" : "/");
+  redirect(schoolId ? "/" : `/invitacion-coach/${token}`);
 }

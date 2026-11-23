@@ -18,6 +18,8 @@ import {
   type MatchStatus,
 } from "@/lib/competition";
 import { getTeamCoaches } from "@/lib/coach";
+import { getTeamGuardianUsers } from "@/lib/guardians";
+import { TeamNoticeForm } from "@/app/coach/equipos/[teamId]/notice-form";
 import { getTeamStaffInvitations } from "@/lib/staff-invitations";
 import { PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
 import { StudentList } from "@/components/student-list";
@@ -50,9 +52,10 @@ export default async function EquipoDetallePage({
   });
   const record = teamRecord(matches);
 
-  const [coaches, staffInvitations] = await Promise.all([
+  const [coaches, staffInvitations, guardians] = await Promise.all([
     getTeamCoaches(teamId),
     getTeamStaffInvitations(teamId),
+    getTeamGuardianUsers(teamId),
   ]);
 
   const ages = students
@@ -119,7 +122,7 @@ export default async function EquipoDetallePage({
       </div>
 
       <div className="mb-6">
-        <CoachAssign
+        {membership.role === "owner" && <CoachAssign
           teamId={team.id}
           coaches={coaches.map((c) => ({ id: c.id, user: c.user }))}
           invitations={staffInvitations.map((i) => ({
@@ -129,8 +132,13 @@ export default async function EquipoDetallePage({
             status: i.status,
             acceptedByName: i.acceptedBy?.name ?? null,
           }))}
-        />
+        />}
       </div>
+
+      <section className="mb-6 rounded-2xl border border-ink/10 bg-white p-5">
+        <h2 className="mb-3 font-display text-lg font-bold">Avisos a tutores</h2>
+        <TeamNoticeForm teamId={team.id} guardians={guardians} />
+      </section>
 
       {/* Partidos del equipo */}
       <div className="mb-6">
@@ -191,7 +199,7 @@ export default async function EquipoDetallePage({
           action={<PrimaryLink href={nuevoHref}>Agregar alumno</PrimaryLink>}
         />
       ) : (
-        <StudentList students={students} showBadges={false} />
+        <StudentList canDelete={membership.role === "owner"} students={students} showBadges={false} />
       )}
     </div>
   );

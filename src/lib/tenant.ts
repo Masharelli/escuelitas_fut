@@ -8,7 +8,10 @@ import { memberships } from "@/db/schema";
 
 export type Role = "owner" | "admin" | "coach" | "parent";
 
-/** Roles con acceso al portal de administración (panel completo de la escuela). */
+/** Dueño: configuración y finanzas; administrador: operación diaria. */
+export const OWNER_ROLES: Role[] = ["owner"];
+
+/** Roles con acceso al portal de administración. */
 export const ADMIN_ROLES: Role[] = ["owner", "admin"];
 
 /**

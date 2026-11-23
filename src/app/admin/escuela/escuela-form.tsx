@@ -52,7 +52,7 @@ export function EscuelaForm({ school }: { school: School }) {
                 className="block w-full text-sm text-ink-soft file:mr-3 file:rounded-lg file:border-0 file:bg-pitch/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-pitch hover:file:bg-pitch/15"
               />
               <p className="mt-1.5 text-xs text-ink-soft">
-                PNG, JPG o WEBP, hasta 5 MB. Cuadrado se ve mejor.
+                PNG, JPG o WEBP, hasta 4 MB. Cuadrado se ve mejor.
               </p>
             </div>
           </div>

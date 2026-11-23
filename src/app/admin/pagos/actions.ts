@@ -1,25 +1,41 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { students, schools } from "@/db/schema";
+import { students, schools, studentDiscounts } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { getStripe, chargeAutopayForPeriod } from "@/lib/stripe";
 import {
-  generateMonthlyCharges,
   notifyChargesCreated,
-  notifyChargePaidById,
+  markManualChargePaid,
+  cancelPendingCharge,
   pesosToCents,
   type ChargeKind,
 } from "@/lib/billing";
+import { billingDate } from "@/lib/billing-rules";
+import { generateMonthlyCharges } from "@/lib/recurring-billing";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
+
+async function refreshScholarships(schoolId: string, studentId?: string) {
+  const today = billingDate();
+  await generateMonthlyCharges(schoolId, today.slice(0, 7), today, studentId, false);
+  revalidatePath("/admin/becas");
+  revalidatePath("/admin/alumnos");
+  revalidatePath("/admin/alumnos/[id]", "page");
+  revalidatePath("/admin/finanzas");
+  revalidatePath("/admin/finanzas/[studentId]", "page");
+  revalidatePath("/admin/pagos");
+  revalidatePath("/padres/pagos");
+}
 
 /**
  * Inicia (o reanuda) el onboarding de Stripe Connect Express de la escuela.
@@ -27,7 +43,8 @@ export type FormState = { error?: string; ok?: boolean } | undefined;
  * Stripe; al terminar, Stripe regresa a /admin/pagos.
  */
 export async function connectStripe() {
-  const { membership } = await requireRole(["owner", "admin"]);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Configurar pagos en línea", new FormData(), async () => {
   const school = await db.query.schools.findFirst({
     where: eq(schools.id, membership.schoolId),
   });
@@ -63,6 +80,7 @@ export async function connectStripe() {
   });
 
   redirect(link.url);
+  });
 }
 
 const KINDS = ["monthly", "enrollment", "event", "product"] as const;
@@ -79,7 +97,8 @@ export async function createPlan(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Guardar precio autorizado", formData, async () => {
   const parsed = planSchema.safeParse({
     name: formData.get("name"),
     kind: formData.get("kind"),
@@ -104,21 +123,36 @@ export async function createPlan(
     categoryId = cat.id;
   }
 
-  await tdb.plans.insert({
+  const id = String(formData.get("id") ?? "");
+  const existing = id ? await tdb.plans.findById(id) : null;
+  if (id && !existing) return { error: "Registro no encontrado" };
+  const annualRenewal = formData.get("annualRenewal") === "on";
+  if (annualRenewal && parsed.data.kind !== "enrollment") {
+    return { error: "La renovación anual se aplica a los planes de inscripción." };
+  }
+  const values = {
     name: parsed.data.name,
     kind: parsed.data.kind,
     amountCents,
     categoryId,
     description: parsed.data.description || null,
-  });
+    annualRenewalStartsOn: annualRenewal ? existing?.annualRenewalStartsOn ?? billingDate() : null,
+  };
+  if (id) {
+    await tdb.plans.updateById(id, values);
+  } else {
+    await tdb.plans.insert(values);
+  }
 
   revalidatePath("/admin/pagos");
   return { ok: true };
+  });
 }
 
 /** Configura el día del mes (1-28) en que vencen las cuotas; vacío = sin vencimiento. */
 export async function setPaymentDueDay(formData: FormData) {
-  const { membership } = await requireRole(["owner", "admin"]);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Definir fecha de pago", formData, async () => {
   const raw = String(formData.get("dueDay") ?? "").trim();
   const n = Math.trunc(Number(raw));
   const day =
@@ -127,25 +161,29 @@ export async function setPaymentDueDay(formData: FormData) {
     .update(schools)
     .set({ paymentDueDay: day })
     .where(eq(schools.id, membership.schoolId));
-  revalidatePath("/admin/pagos");
+  await refreshScholarships(membership.schoolId);
+  });
 }
 
 export async function deletePlan(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Eliminar plan de cobro", formData, async () => {
   const id = String(formData.get("id") ?? "");
   if (id) {
     await tenantDb(membership.schoolId).plans.deleteById(id);
   }
   revalidatePath("/admin/pagos");
+  });
 }
 
-const periodRe = /^\d{4}-\d{2}$/;
+const periodRe = /^[1-9]\d{3}-(0[1-9]|1[0-2])$/;
 
 export async function generateCharges(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Generar cuotas mensuales", formData, async () => {
   const period = String(formData.get("period") ?? "");
   if (!periodRe.test(period)) {
     return { error: "Elige un mes válido" };
@@ -157,6 +195,7 @@ export async function generateCharges(
   revalidatePath("/admin/pagos");
   revalidatePath("/admin/finanzas");
   return { ok: true };
+  });
 }
 
 const oneOffSchema = z.object({
@@ -173,7 +212,8 @@ export async function createOneOffCharge(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Crear cargo autorizado", formData, async () => {
   const parsed = oneOffSchema.safeParse({
     kind: formData.get("kind"),
     name: formData.get("name"),
@@ -233,28 +273,122 @@ export async function createOneOffCharge(
   revalidatePath("/admin/pagos");
   revalidatePath("/admin/finanzas");
   return { ok: true };
+  });
+}
+
+const discountSchema = z.object({
+  name: z.string().min(1, "Escribe el nombre de la beca/promoción"),
+  kind: z.enum(["percent", "fixed"]),
+  value: z.string().min(1, "Escribe el descuento"),
+});
+
+/** Crea una beca o promoción (descuento % o monto fijo). */
+export async function createDiscount(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Guardar beca o promoción", formData, async () => {
+  const parsed = discountSchema.safeParse({
+    name: formData.get("name"),
+    kind: formData.get("kind"),
+    value: formData.get("value"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+
+  let value: number | null;
+  if (parsed.data.kind === "percent") {
+    const n = Number(parsed.data.value);
+    value = Number.isInteger(n) && n >= 1 && n <= 100 ? n : null;
+    if (value === null) return { error: "El porcentaje debe ser de 1 a 100" };
+  } else {
+    value = pesosToCents(parsed.data.value);
+    if (!value) return { error: "Monto inválido" };
+  }
+
+  const tdb = tenantDb(membership.schoolId);
+  const id = String(formData.get("id") ?? "");
+  const values = {
+    name: parsed.data.name,
+    kind: parsed.data.kind,
+    value,
+  };
+  if (id) {
+    if (!(await tdb.discounts.findById(id))) return { error: "Registro no encontrado" };
+    await tdb.discounts.updateById(id, values);
+    await refreshScholarships(membership.schoolId);
+  } else {
+    await tdb.discounts.insert(values);
+    revalidatePath("/admin/becas");
+  }
+  return { ok: true };
+  });
+}
+
+export async function deleteDiscount(formData: FormData) {
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Eliminar beca o promoción", formData, async () => {
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    await tenantDb(membership.schoolId).discounts.deleteById(id);
+    await refreshScholarships(membership.schoolId);
+  }
+  });
+}
+
+/** Asigna una beca/promoción a uno o varios alumnos. */
+export async function assignDiscount(formData: FormData) {
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Otorgar beca o promoción", formData, async () => {
+  const discountId = String(formData.get("discountId") ?? "");
+  const studentIds = formData.getAll("studentIds").map(String).filter(Boolean);
+  if (!discountId || studentIds.length === 0) return;
+
+  const tdb = tenantDb(membership.schoolId);
+  const discount = await tdb.discounts.findById(discountId);
+  if (!discount?.active) return;
+
+  // Solo alumnos de la escuela.
+  const valid = await tdb.students.findMany({
+    where: inArray(students.id, studentIds),
+    columns: { id: true },
+  });
+  await tdb.studentDiscounts.insertManyIgnoringDuplicates(
+    valid.map((s) => ({ discountId, studentId: s.id }))
+  );
+  if (valid.length) await refreshScholarships(membership.schoolId, valid.length === 1 ? valid[0].id : undefined);
+  });
+}
+
+export async function unassignDiscount(formData: FormData) {
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Retirar beca o promoción", formData, async () => {
+  const id = String(formData.get("id") ?? "");
+  if (id) {
+    const [removed] = await db.delete(studentDiscounts)
+      .where(and(eq(studentDiscounts.id, id), eq(studentDiscounts.schoolId, membership.schoolId)))
+      .returning({ studentId: studentDiscounts.studentId });
+    if (removed) await refreshScholarships(membership.schoolId, removed.studentId);
+  }
+  });
 }
 
 export async function markChargePaid(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Registrar pago de alumno", formData, async () => {
   const id = String(formData.get("id") ?? "");
-  if (id) {
-    await tenantDb(membership.schoolId).charges.updateById(id, {
-      status: "paid",
-      paidAt: new Date(),
-    });
-    await notifyChargePaidById(id);
-  }
+  if (id) await markManualChargePaid(membership.schoolId, id);
   revalidatePath("/admin/pagos");
+  });
 }
 
 export async function cancelCharge(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Cancelar cargo de alumno", formData, async () => {
   const id = String(formData.get("id") ?? "");
-  if (id) {
-    await tenantDb(membership.schoolId).charges.updateById(id, {
-      status: "canceled",
-    });
-  }
+  if (id) await cancelPendingCharge(membership.schoolId, id);
   revalidatePath("/admin/pagos");
+  });
 }

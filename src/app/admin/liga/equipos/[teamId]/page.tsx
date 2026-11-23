@@ -53,7 +53,7 @@ export default async function LigaTeamPage({
             .filter(Boolean)
             .join(" · ") || undefined
         }
-        action={
+        action={membership.role === "owner" &&
           <form action={deleteLeagueTeam}>
             <input type="hidden" name="id" value={team.id} />
             <button

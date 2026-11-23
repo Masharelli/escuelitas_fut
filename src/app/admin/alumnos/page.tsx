@@ -4,17 +4,27 @@ import { db } from "@/db";
 import { students as studentsTable } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
+import {
+  paymentTrafficLights,
+  activeDiscountsByStudent,
+  scholarshipLabel,
+  TRAFFIC_LIGHT_LABELS,
+  type TrafficLight,
+} from "@/lib/billing";
 import { PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
 import { StudentList } from "@/components/student-list";
-import { StudentFilters } from "./student-filters";
+import { FilterBar } from "@/components/filter-bar";
 import { getFormOptions } from "./options";
+
+const isLight = (v: string | undefined): v is TrafficLight =>
+  v === "green" || v === "yellow" || v === "red";
 
 export default async function AlumnosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; cat?: string; team?: string }>;
+  searchParams: Promise<{ q?: string; cat?: string; team?: string; pago?: string }>;
 }) {
-  const { q, cat, team } = await searchParams;
+  const { q, cat, team, pago } = await searchParams;
   const { membership } = await requireRole(ADMIN_ROLES);
   const schoolId = membership.schoolId;
   const tdb = tenantDb(schoolId);
@@ -41,11 +51,20 @@ export default async function AlumnosPage({
   }
 
   // El facade añade el filtro de escuela; aquí sólo van los filtros de búsqueda.
-  const students = await tdb.students.findMany({
+  const found = await tdb.students.findMany({
     where: and(...conditions),
     with: { category: true, team: true },
     orderBy: [asc(studentsTable.lastName), asc(studentsTable.firstName)],
   });
+
+  // Semáforo de pagos por alumno (punto de color + filtro "pago").
+  const [lights, scholarships] = await Promise.all([
+    paymentTrafficLights(schoolId, found.map((student) => student.id)),
+    activeDiscountsByStudent(schoolId),
+  ]);
+  const students = found
+    .map((s) => ({ ...s, light: lights.get(s.id), scholarships: scholarships.get(s.id)?.map(scholarshipLabel) }))
+    .filter((s) => !isLight(pago) || s.light === pago);
 
   const { categories, teams } = await getFormOptions(schoolId);
 
@@ -91,13 +110,29 @@ export default async function AlumnosPage({
         />
       ) : (
         <>
-          <StudentFilters categories={categories} teams={teams} />
+          <FilterBar
+            search={{ key: "q", placeholder: "Buscar por nombre o apellido…" }}
+            selects={[
+              { key: "cat", allLabel: "Todas las categorías", options: categories },
+              { key: "team", allLabel: "Todos los equipos", options: teams },
+              {
+                key: "pago",
+                allLabel: "Pagos: todos",
+                options: (["green", "yellow", "red"] as const).map((l) => ({
+                  value: l,
+                  label:
+                    (l === "green" ? "🟢 " : l === "yellow" ? "🟡 " : "🔴 ") +
+                    TRAFFIC_LIGHT_LABELS[l],
+                })),
+              },
+            ]}
+          />
           {students.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-ink/15 bg-white/60 p-8 text-center text-sm text-ink-soft">
               No encontramos alumnos con esos filtros.
             </p>
           ) : (
-            <StudentList students={students} />
+            <StudentList canDelete={membership.role === "owner"} students={students} />
           )}
         </>
       )}

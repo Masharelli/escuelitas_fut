@@ -7,6 +7,7 @@ import Link from "next/link";
 import { type FormState } from "./actions";
 import { Card } from "@/components/ui";
 import { TextField, SelectField, TextareaField } from "@/components/form/fields";
+import { SCHOLARSHIP_DAY_OPTIONS } from "@/lib/billing-rules";
 import { SubmitButton } from "@/components/submit-button";
 
 type Option = { value: string; label: string };
@@ -15,6 +16,8 @@ type Student = {
   firstName: string;
   lastName: string;
   birthDate: string | null;
+  enrolledOn: string | null;
+  reenrolledOn: string | null;
   photoUrl: string | null;
   categoryId: string | null;
   teamId: string | null;
@@ -65,6 +68,8 @@ export function StudentForm({
   submitLabel,
   defaultCategoryId,
   defaultTeamId,
+  defaultEnrolledOn,
+  scholarships = [],
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   categories: Option[];
@@ -73,6 +78,8 @@ export function StudentForm({
   submitLabel: string;
   defaultCategoryId?: string;
   defaultTeamId?: string;
+  defaultEnrolledOn?: string;
+  scholarships?: Option[];
 }) {
   const [state, formAction] = useActionState<FormState, FormData>(
     action,
@@ -82,6 +89,18 @@ export function StudentForm({
   return (
     <form action={formAction} className="space-y-6">
       {student && <input type="hidden" name="id" value={student.id} />}
+
+      {scholarships.length > 0 && (
+        <Card className="grid gap-4 sm:grid-cols-2">
+          <SelectField label="Beca" name="discountId" options={scholarships} placeholder="Sin beca" />
+          <SelectField
+            label="Último día de pago con beca"
+            name="scholarshipPaymentDay"
+            options={SCHOLARSHIP_DAY_OPTIONS}
+            placeholder="Usar el vencimiento general"
+          />
+        </Card>
+      )}
 
       <Card>
         <p className="mb-4 text-sm font-semibold text-ink">Datos del alumno</p>
@@ -131,6 +150,20 @@ export function StudentForm({
             required={false}
             placeholder="(opcional)"
             defaultValue={student?.curp ?? undefined}
+          />
+          <TextField
+            label="Fecha de inscripción"
+            name="enrolledOn"
+            type="date"
+            required={false}
+            defaultValue={student?.enrolledOn ?? defaultEnrolledOn}
+          />
+          <TextField
+            label="Última reinscripción"
+            name="reenrolledOn"
+            type="date"
+            required={false}
+            defaultValue={student?.reenrolledOn ?? undefined}
           />
           <SelectField
             label="Categoría"
@@ -265,7 +298,7 @@ export function StudentForm({
               type="email"
               required={false}
               placeholder="correo@ejemplo.com"
-              hint="Con este correo el papá/mamá podrá ver a su hijo al registrarse."
+              hint="Usa el correo de la misma cuenta si el tutor tiene más hijos en la escuela."
               defaultValue={student?.guardianEmail ?? undefined}
             />
           </div>

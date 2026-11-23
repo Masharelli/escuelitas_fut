@@ -1,8 +1,8 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db";
-import { coachTeams, teams } from "@/db/schema";
+import { coachTeams, memberships, teams, users } from "@/db/schema";
 import type { Role } from "@/lib/tenant";
 
 /** Ids de los equipos que tiene asignados un entrenador en una escuela. */
@@ -25,10 +25,34 @@ export async function getCoachTeams(userId: string, schoolId: string) {
   const ids = await getCoachTeamIds(userId, schoolId);
   if (ids.length === 0) return [];
   return db.query.teams.findMany({
-    where: inArray(teams.id, ids),
+    where: and(eq(teams.schoolId, schoolId), inArray(teams.id, ids)),
     with: { category: true },
     orderBy: [asc(teams.name)],
   });
+}
+
+/** Asigna una cuenta que ya es entrenadora de esta escuela a otro equipo. */
+export async function assignExistingCoach(schoolId: string, teamId: string, email: string) {
+  const assigned = await db.insert(coachTeams).select(
+    db.select({
+      id: sql<string>`gen_random_uuid()::text`.as("id"),
+      schoolId: teams.schoolId,
+      userId: users.id,
+      teamId: teams.id,
+      createdAt: sql<Date>`now()`.as("created_at"),
+    }).from(teams)
+      .innerJoin(memberships, and(
+        eq(memberships.schoolId, teams.schoolId),
+        eq(memberships.role, "coach"),
+      ))
+      .innerJoin(users, eq(users.id, memberships.userId))
+      .where(and(eq(teams.id, teamId), eq(teams.schoolId, schoolId), sql`lower(${users.email}) = ${email}`)),
+  ).onConflictDoNothing().returning({ id: coachTeams.id });
+  if (assigned.length) return true;
+  const existing = await db.select({ id: coachTeams.id }).from(coachTeams)
+    .innerJoin(users, eq(users.id, coachTeams.userId))
+    .where(and(eq(coachTeams.schoolId, schoolId), eq(coachTeams.teamId, teamId), sql`lower(${users.email}) = ${email}`));
+  return existing.length > 0;
 }
 
 /**

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { and, asc, eq } from "drizzle-orm";
 
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { students as studentsTable, matches as matchesTable } from "@/db/schema";
 import { formatKickoff, MATCH_STATUS_LABELS, type MatchStatus } from "@/lib/competition";
-import { getCallupsForMatch, type RsvpStatus } from "@/lib/callups";
+import { getCallupsForMatch, buildCallupPlayers } from "@/lib/callups";
 import { getTeamGuardianUsers } from "@/lib/guardians";
 import { PageHeader, Card } from "@/components/ui";
 import { CallupManager } from "@/components/callup-manager";
@@ -55,15 +56,12 @@ export default async function MatchDetailPage({
   // Candidatos a "papá estadístico": tutores del equipo (Fase F).
   const scorekeeperCandidates = await getTeamGuardianUsers(match.teamId);
 
-  // Convocatoria del partido (Fase C).
+  // Convocatoria del partido (Fase C). El botón de WhatsApp manda al tutor la
+  // convocatoria con un link mágico para confirmar sin login.
+  const h = await headers();
+  const origin = h.get("origin") ?? `http://${h.get("host")}`;
   const callupRows = await getCallupsForMatch(membership.schoolId, match.id);
-  const callupByStudent = new Map(callupRows.map((c) => [c.studentId, c]));
-  const callupPlayers = roster.map((s) => ({
-    id: s.id,
-    name: `${s.firstName} ${s.lastName}`,
-    convoked: callupByStudent.has(s.id),
-    rsvp: (callupByStudent.get(s.id)?.rsvp ?? "pending") as RsvpStatus,
-  }));
+  const callupPlayers = buildCallupPlayers(match, roster, callupRows, origin);
 
   return (
     <div className="mx-auto w-full max-w-2xl">

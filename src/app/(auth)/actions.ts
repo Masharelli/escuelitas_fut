@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { AuthError } from "next-auth";
 
-import { signIn, signOut } from "@/auth";
+import { signIn } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { safeNext } from "@/lib/safe-next";
@@ -55,10 +55,6 @@ export async function registerUser(
     password: parsed.data.password,
     redirectTo: safeNext(formData.get("next")),
   });
-}
-
-export async function logout() {
-  await signOut({ redirectTo: "/login" });
 }
 
 export async function authenticate(

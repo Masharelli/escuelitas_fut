@@ -1,6 +1,8 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { cache } from "react";
 
 import { db } from "@/db";
+import { getActiveMembership, requireAuth } from "@/lib/tenant";
 import {
   students,
   guardianships,
@@ -9,11 +11,12 @@ import {
   tournaments,
   trainingSessions,
   autopay,
+  users,
 } from "@/db/schema";
 
 /**
  * Vincula al usuario con los alumnos cuyo "correo del tutor" coincide con el
- * suyo, y le da una membresía de "padre" en esas escuelas. Es idempotente
+ * suyo, una vez verificado, y le da una membresía de "padre" en esas escuelas. Es idempotente
  * (no duplica vínculos ni membresías), así que es seguro llamarla en cada
  * carga del portal.
  */
@@ -22,7 +25,10 @@ export async function claimStudentsByEmail(
   email?: string | null
 ) {
   if (!email) return;
-  const e = email.toLowerCase();
+  const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+  // El correo escrito al registrarse no demuestra que sea dueño de ese buzón.
+  if (!user?.emailVerified || user.email.toLowerCase() !== email.toLowerCase()) return;
+  const e = user.email.toLowerCase();
 
   const matched = await db
     .select({ id: students.id, schoolId: students.schoolId })
@@ -43,6 +49,12 @@ export async function claimStudentsByEmail(
       .onConflictDoNothing();
   }
 }
+
+export const getGuardianMembership = cache(async () => {
+  const session = await requireAuth();
+  await claimStudentsByEmail(session.user.id, session.user.email);
+  return getActiveMembership();
+});
 
 /** Hijos vinculados al usuario, con su categoría, equipo y escuela. */
 export async function getMyChildren(userId: string) {

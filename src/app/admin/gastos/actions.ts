@@ -1,10 +1,11 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
-import { requireFeature } from "@/lib/plan";
 import { tenantDb } from "@/lib/tenant-db";
 import { pesosToCents } from "@/lib/billing";
 
@@ -22,7 +23,7 @@ const schema = z.object({
   ]),
   description: z.string().min(1, "Escribe una descripción"),
   amount: z.string().min(1, "Escribe el monto"),
-  spentOn: z.string().min(1, "Elige la fecha"),
+  spentOn: z.iso.date("Elige una fecha válida"),
   categoryId: z.string().nullish(),
   notes: z.string().nullish(),
 });
@@ -31,8 +32,8 @@ export async function createExpense(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
-  requireFeature(membership.school.plan, "expenses");
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Registrar egreso", formData, async () => {
 
   const parsed = schema.safeParse({
     category: formData.get("category"),
@@ -72,13 +73,15 @@ export async function createExpense(
   revalidatePath("/admin/gastos");
   revalidatePath("/admin/finanzas");
   return { ok: true };
+  });
 }
 
 export async function deleteExpense(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
-  requireFeature(membership.school.plan, "expenses");
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Eliminar egreso", formData, async () => {
   const id = String(formData.get("id") ?? "");
   if (id) await tenantDb(membership.schoolId).expenses.deleteById(id);
   revalidatePath("/admin/gastos");
   revalidatePath("/admin/finanzas");
+  });
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -27,7 +29,8 @@ export async function updateSchool(
   formData: FormData
 ): Promise<FormState> {
   // Solo dueño/admin pueden editar el perfil de la escuela.
-  const { membership } = await requireRole(["owner", "admin"]);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Modificar configuración de escuela", formData, async () => {
 
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
@@ -65,4 +68,5 @@ export async function updateSchool(
   // Refresca el portal (el nombre/escudo aparecen en el menú lateral).
   revalidatePath("/admin", "layout");
   return { ok: true };
+  });
 }

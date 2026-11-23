@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 
@@ -21,7 +23,8 @@ export async function saveCallups(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Guardar convocatoria", formData, async () => {
   const target = String(formData.get("target") ?? "");
   const targetId = String(formData.get("targetId") ?? "");
   if ((target !== "match" && target !== "session") || !targetId) {
@@ -94,4 +97,5 @@ export async function saveCallups(
     revalidatePath(`/coach/sesiones/${targetId}`);
   }
   return { ok: true };
+  });
 }

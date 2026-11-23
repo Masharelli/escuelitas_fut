@@ -20,10 +20,13 @@ import {
   type MatchStatus,
 } from "@/lib/competition";
 import { SESSION_KIND_LABELS, type SessionKind } from "@/lib/attendance";
+import { paymentTrafficLights } from "@/lib/billing";
 import { PageHeader, Card } from "@/components/ui";
 import { StudentList } from "@/components/student-list";
 import { CreateSessionForm } from "@/app/admin/asistencias/forms";
 import { CreateMatchForm } from "@/app/admin/partidos/forms";
+import { getTeamGuardianUsers } from "@/lib/guardians";
+import { TeamNoticeForm } from "./notice-form";
 
 export default async function CoachTeamPage({
   params,
@@ -57,6 +60,14 @@ export default async function CoachTeamPage({
     }),
     tdb.tournaments.findMany({ orderBy: [asc(tournamentsTable.name)] }),
   ]);
+
+  // Semáforo de pagos por alumno: el coach ve quién está al corriente.
+  const lights = await paymentTrafficLights(
+    membership.schoolId,
+    students.map((s) => s.id)
+  );
+  const roster = students.map((s) => ({ ...s, light: lights.get(s.id) }));
+  const guardians = await getTeamGuardianUsers(team.id);
 
   const teamOption = [{ value: team.id, label: team.name }];
   const tournamentOptions = tournaments.map((t) => ({
@@ -162,12 +173,32 @@ export default async function CoachTeamPage({
                 Este equipo aún no tiene alumnos.
               </p>
             ) : (
-              <StudentList students={students} showBadges={false} />
+              <>
+                <div className="mb-2 flex flex-wrap gap-3 text-xs text-ink-soft">
+                  {(["green", "red"] as const).map((l) => (
+                    <span key={l} className="inline-flex items-center gap-1.5">
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          l === "green"
+                            ? "bg-emerald-500"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      {l === "green" ? "Pago al corriente" : "Pago pendiente"}
+                    </span>
+                  ))}
+                </div>
+                <StudentList students={roster.map((s) => ({ ...s, light: s.light === "green" ? "green" : "red" }))} showBadges={false} readOnly />
+              </>
             )}
           </section>
         </div>
 
         <div className="order-1 space-y-4 lg:order-2">
+          <Card>
+            <p className="mb-3 text-sm font-semibold text-ink">Avisos a tutores</p>
+            <TeamNoticeForm teamId={team.id} guardians={guardians} />
+          </Card>
           <Card>
             <p className="mb-3 text-sm font-semibold text-ink">Nueva sesión</p>
             <CreateSessionForm teams={teamOption} />

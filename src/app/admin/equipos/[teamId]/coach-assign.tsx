@@ -38,8 +38,8 @@ export function CoachAssign({
     <div className="rounded-2xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-6">
       <h2 className="font-display text-lg font-bold">Entrenadores</h2>
       <p className="mt-0.5 text-sm text-ink-soft">
-        Comparte un enlace para que el entrenador acceda a este equipo desde su
-        propio portal (asistencias, convocatorias y partidos).
+        Usa el mismo correo para asignar a un entrenador a varios equipos o categorías.
+        Si es nuevo en la escuela, comparte el enlace de invitación.
       </p>
 
       {coaches.length > 0 && (
@@ -84,19 +84,22 @@ export function CoachAssign({
         <input type="hidden" name="teamId" value={teamId} />
         <label className="min-w-0 flex-1">
           <span className="mb-1.5 block text-sm font-medium text-ink">
-            Correo del entrenador (opcional)
+            Correo del entrenador
           </span>
           <input
             type="email"
             name="email"
+            required
             placeholder="entrenador@correo.com"
             className="w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-ink shadow-sm outline-none transition focus:border-pitch focus:ring-2 focus:ring-pitch/20"
           />
         </label>
-        <SubmitButton>Generar enlace</SubmitButton>
+        <SubmitButton>Asignar o invitar</SubmitButton>
       </form>
       {state?.ok && (
-        <p className="mt-2 text-sm text-pitch">Enlace de invitación generado ✓</p>
+        <p role="status" className="mt-2 text-sm text-pitch">
+          {state.assigned ? "Entrenador asignado a este equipo." : "Enlace de invitación generado."}
+        </p>
       )}
       {state?.error && (
         <p role="alert" className="mt-2 text-sm text-red-700">

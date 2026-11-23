@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -20,7 +22,8 @@ export async function createLeagueTeam(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Crear equipo de liga", formData, async () => {
   const parsed = teamSchema.safeParse({
     name: formData.get("name"),
     color: formData.get("color"),
@@ -42,15 +45,18 @@ export async function createLeagueTeam(
 
   revalidatePath("/admin/liga/equipos");
   return { ok: true };
+  });
 }
 
 export async function deleteLeagueTeam(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Eliminar equipo de liga", formData, async () => {
   const id = String(formData.get("id") ?? "");
   if (id) {
     await tenantDb(membership.schoolId).leagueTeams.deleteById(id);
   }
   revalidatePath("/admin/liga/equipos");
+  });
 }
 
 const playerSchema = z.object({
@@ -64,7 +70,8 @@ export async function addRosterPlayer(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Registrar jugador de liga", formData, async () => {
   const parsed = playerSchema.safeParse({
     teamId: formData.get("teamId"),
     name: formData.get("name"),
@@ -88,14 +95,17 @@ export async function addRosterPlayer(
 
   revalidatePath(`/admin/liga/equipos/${team.id}`);
   return { ok: true };
+  });
 }
 
 export async function removeRosterPlayer(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Retirar jugador de liga", formData, async () => {
   const id = String(formData.get("id") ?? "");
   const teamId = String(formData.get("teamId") ?? "");
   if (id) {
     await tenantDb(membership.schoolId).rosterPlayers.deleteById(id);
   }
   if (teamId) revalidatePath(`/admin/liga/equipos/${teamId}`);
+  });
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -8,6 +10,7 @@ import { requireRole, STAFF_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { assertTeamAccess } from "@/lib/coach";
 import { guardiansOfTeam, notifyUsers } from "@/lib/notifications";
+import { getTeamGuardianUsers } from "@/lib/guardians";
 
 export type FormState = { error?: string; ok?: boolean } | undefined;
 
@@ -26,7 +29,8 @@ export async function createMatch(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Crear partido", formData, async () => {
   const parsed = createSchema.safeParse({
     teamId: formData.get("teamId"),
     opponentName: formData.get("opponentName"),
@@ -76,6 +80,7 @@ export async function createMatch(
       ? `/coach/equipos/${team.id}`
       : "/admin/partidos"
   );
+  });
 }
 
 /**
@@ -87,7 +92,8 @@ export async function saveResult(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Guardar resultado de partido", formData, async () => {
   const matchId = String(formData.get("matchId") ?? "");
   const ourScore = Number(formData.get("ourScore"));
   const opponentScore = Number(formData.get("opponentScore"));
@@ -106,12 +112,6 @@ export async function saveResult(
   const match = await tdb.matches.findById(matchId);
   if (!match) return { error: "Partido no encontrado" };
   await assertTeamAccess(membership, match.teamId);
-
-  await tdb.matches.updateById(matchId, {
-    ourScore,
-    opponentScore,
-    status: "played",
-  });
 
   // Estadísticas por jugador (solo guarda filas con goles o asistencias).
   const ids = String(formData.get("studentIds") ?? "")
@@ -138,6 +138,11 @@ export async function saveResult(
     );
 
   await tdb.matchPlayerStats.replaceForMatch(matchId, rows);
+  await tdb.matches.updateById(matchId, {
+    ourScore,
+    opponentScore,
+    status: "played",
+  });
 
   // Avisa a los tutores del equipo que ya hay resultado.
   const team = await tdb.teams.findById(match.teamId);
@@ -165,10 +170,12 @@ export async function saveResult(
   revalidatePath(`/coach/partidos/${matchId}`);
   revalidatePath("/admin/partidos");
   return { ok: true };
+  });
 }
 
 export async function setMatchStatus(formData: FormData) {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Cambiar estado de partido", formData, async () => {
   const matchId = String(formData.get("matchId") ?? "");
   const status = String(formData.get("status") ?? "");
   const allowed = ["scheduled", "canceled", "postponed"] as const;
@@ -183,10 +190,12 @@ export async function setMatchStatus(formData: FormData) {
     revalidatePath(`/admin/partidos/${matchId}`);
     revalidatePath("/admin/partidos");
   }
+  });
 }
 
 export async function deleteMatch(formData: FormData) {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Eliminar partido", formData, async () => {
   const matchId = String(formData.get("matchId") ?? "");
   if (!matchId) redirect("/admin/partidos");
 
@@ -204,6 +213,7 @@ export async function deleteMatch(formData: FormData) {
       ? `/coach/equipos/${match.teamId}`
       : "/admin/partidos"
   );
+  });
 }
 
 /**
@@ -211,7 +221,8 @@ export async function deleteMatch(formData: FormData) {
  * el partido en vivo. `scorekeeperUserId` vacío lo quita.
  */
 export async function designateScorekeeper(formData: FormData) {
-  const { membership } = await requireRole(STAFF_ROLES);
+  const { membership, session } = await requireRole(STAFF_ROLES);
+  return recordActivity(membership, session.user.name, "Designar estadístico del partido", formData, async () => {
   const matchId = String(formData.get("matchId") ?? "");
   const userId = String(formData.get("scorekeeperUserId") ?? "").trim();
   if (!matchId) redirect("/admin/partidos");
@@ -221,10 +232,12 @@ export async function designateScorekeeper(formData: FormData) {
   if (!match) redirect("/admin/partidos");
   await assertTeamAccess(membership, match.teamId);
 
+  if (userId && !(await getTeamGuardianUsers(match.teamId)).some((user) => user.id === userId)) return;
   await tdb.matches.updateById(matchId, {
     scorekeeperUserId: userId || null,
   });
 
   revalidatePath(`/admin/partidos/${matchId}`);
   revalidatePath(`/coach/partidos/${matchId}`);
+  });
 }

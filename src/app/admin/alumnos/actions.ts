@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -8,6 +10,9 @@ import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { saveImage, hasUpload } from "@/lib/uploads";
 import { createInvitation, revokeInvitation } from "@/lib/invitations";
+import { db } from "@/db";
+import { students, studentDiscounts } from "@/db/schema";
+import { billingDate } from "@/lib/billing-rules";
 
 export type FormState = { error?: string } | undefined;
 
@@ -17,6 +22,8 @@ const schema = z.object({
   firstName: z.string().min(1, "Escribe el nombre"),
   lastName: z.string().min(1, "Escribe los apellidos"),
   birthDate: opt,
+  enrolledOn: z.iso.date().or(z.literal("")).nullish(),
+  reenrolledOn: z.iso.date().or(z.literal("")).nullish(),
   categoryId: opt,
   teamId: opt,
   // Personales / inscripción
@@ -64,6 +71,8 @@ function parse(formData: FormData) {
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
     birthDate: formData.get("birthDate"),
+    enrolledOn: formData.get("enrolledOn"),
+    reenrolledOn: formData.get("reenrolledOn"),
     categoryId: formData.get("categoryId"),
     teamId: formData.get("teamId"),
     sex: formData.get("sex"),
@@ -90,6 +99,8 @@ function parse(formData: FormData) {
 function extraFields(d: z.infer<typeof schema>) {
   const n = (v: string | null | undefined) => v || null;
   return {
+    enrolledOn: n(d.enrolledOn),
+    reenrolledOn: n(d.reenrolledOn),
     sex: n(d.sex),
     nationality: n(d.nationality),
     curp: n(d.curp),
@@ -114,7 +125,8 @@ export async function createStudent(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Registrar alumno", formData, async () => {
   const parsed = parse(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
@@ -133,26 +145,70 @@ export async function createStudent(
 
   const tdb = tenantDb(membership.schoolId);
   const refs = await resolveRefs(tdb, d.categoryId, d.teamId);
+  const discountId = String(formData.get("discountId") ?? "");
+  const discount = discountId && membership.role === "owner"
+    ? await tdb.discounts.findById(discountId) : null;
+  if (discountId && !discount?.active) return { error: "Elige una beca activa de tu escuela." };
+  const day = readScholarshipDay(formData.get("scholarshipPaymentDay"));
+  if (day === undefined) return { error: "El día de pago debe ser del 1 al 31." };
 
-  await tdb.students.insert({
-    firstName: d.firstName,
-    lastName: d.lastName,
-    birthDate: d.birthDate || null,
-    photoUrl: photoUrl ?? null,
-    categoryId: refs.categoryId,
-    teamId: refs.teamId,
-    ...extraFields(d),
+  await db.transaction(async (tx) => {
+    const [student] = await tx.insert(students).values({
+      schoolId: membership.schoolId,
+      firstName: d.firstName,
+      lastName: d.lastName,
+      birthDate: d.birthDate || null,
+      photoUrl: photoUrl ?? null,
+      categoryId: refs.categoryId,
+      teamId: refs.teamId,
+      ...extraFields(d),
+      enrolledOn: d.enrolledOn || billingDate(),
+      scholarshipPaymentDay: discount ? day : null,
+    }).returning({ id: students.id });
+    if (discount) {
+      await tx.insert(studentDiscounts).values({
+        schoolId: membership.schoolId, studentId: student.id, discountId: discount.id,
+      });
+    }
   });
 
+  if (discount) revalidatePath("/admin/becas");
   revalidatePath("/admin/alumnos");
   redirect("/admin/alumnos");
+  });
+}
+
+function readScholarshipDay(value: FormDataEntryValue | null) {
+  if (value === "" || value === null) return null;
+  const day = Number(value);
+  return Number.isInteger(day) && day >= 1 && day <= 31 ? day : undefined;
+}
+
+export async function setScholarshipPaymentDay(formData: FormData) {
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Modificar vencimiento de beca", formData, async () => {
+    const studentId = String(formData.get("studentId") ?? "");
+    const day = readScholarshipDay(formData.get("scholarshipPaymentDay"));
+    const tdb = tenantDb(membership.schoolId);
+    if (day === undefined || !studentId || !(await tdb.students.findById(studentId))) return;
+    await tdb.students.updateById(studentId, { scholarshipPaymentDay: day });
+    const today = billingDate();
+    const { generateMonthlyCharges } = await import("@/lib/recurring-billing");
+    await generateMonthlyCharges(membership.schoolId, today.slice(0, 7), today, studentId, false);
+    revalidatePath(`/admin/alumnos/${studentId}`);
+    revalidatePath("/admin/pagos");
+    revalidatePath("/admin/finanzas");
+    revalidatePath("/admin/finanzas/[studentId]", "page");
+    revalidatePath("/padres/pagos");
+  });
 }
 
 export async function updateStudent(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Modificar alumno", formData, async () => {
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Alumno no encontrado" };
 
@@ -190,11 +246,13 @@ export async function updateStudent(
 
   revalidatePath("/admin/alumnos");
   redirect("/admin/alumnos");
+  });
 }
 
 /** Genera (o reutiliza) un enlace de invitación de tutor para el alumno. */
 export async function inviteGuardian(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Invitar tutor", formData, async () => {
   const studentId = String(formData.get("studentId") ?? "");
   if (!studentId) return;
 
@@ -205,24 +263,29 @@ export async function inviteGuardian(formData: FormData) {
 
   await createInvitation(membership.schoolId, studentId, student.guardianEmail);
   revalidatePath(`/admin/alumnos/${studentId}`);
+  });
 }
 
 /** Revoca una invitación de tutor pendiente. */
 export async function revokeGuardianInvitation(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Revocar invitación de tutor", formData, async () => {
   const id = String(formData.get("invitationId") ?? "");
   const studentId = String(formData.get("studentId") ?? "");
   if (id) {
     await revokeInvitation(id, membership.schoolId);
     revalidatePath(`/admin/alumnos/${studentId}`);
   }
+  });
 }
 
 export async function deleteStudent(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Eliminar alumno", formData, async () => {
   const id = String(formData.get("id") ?? "");
   if (id) {
     await tenantDb(membership.schoolId).students.deleteById(id);
   }
   revalidatePath("/admin/alumnos");
+  });
 }

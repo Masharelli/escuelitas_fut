@@ -1,5 +1,7 @@
 "use server";
 
+import { recordActivity } from "@/lib/activity";
+
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -11,9 +13,9 @@ import {
   createStaffInvitation,
   revokeStaffInvitation,
 } from "@/lib/staff-invitations";
-import { removeCoachTeam } from "@/lib/coach";
+import { assignExistingCoach, removeCoachTeam } from "@/lib/coach";
 
-export type FormState = { error?: string; ok?: boolean } | undefined;
+export type FormState = { error?: string; ok?: boolean; assigned?: boolean } | undefined;
 
 const categorySchema = z.object({
   name: z.string().min(1, "Escribe el nombre de la categoría"),
@@ -26,7 +28,8 @@ export async function createCategory(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Crear categoría", formData, async () => {
   const parsed = categorySchema.safeParse({
     name: formData.get("name"),
     birthYear: formData.get("birthYear"),
@@ -51,6 +54,7 @@ export async function createCategory(
   await tdb.categories.insert({ name: parsed.data.name, birthYear });
   revalidatePath("/admin/equipos");
   return { ok: true };
+  });
 }
 
 const teamSchema = z.object({
@@ -63,7 +67,8 @@ export async function createTeam(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Crear equipo", formData, async () => {
   const parsed = teamSchema.safeParse({
     name: formData.get("name"),
     categoryId: formData.get("categoryId"),
@@ -90,24 +95,29 @@ export async function createTeam(
   });
   revalidatePath("/admin/equipos");
   return { ok: true };
+  });
 }
 
 export async function deleteCategory(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Eliminar categoría", formData, async () => {
   const id = String(formData.get("id") ?? "");
   if (id) {
     await tenantDb(membership.schoolId).categories.deleteById(id);
   }
   revalidatePath("/admin/equipos");
+  });
 }
 
 export async function deleteTeam(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  return recordActivity(membership, session.user.name, "Eliminar equipo", formData, async () => {
   const id = String(formData.get("id") ?? "");
   if (id) {
     await tenantDb(membership.schoolId).teams.deleteById(id);
   }
   revalidatePath("/admin/equipos");
+  });
 }
 
 /** Genera un enlace de invitación de entrenador para un equipo. */
@@ -115,34 +125,42 @@ export async function inviteCoach(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Invitar profesor", formData, async () => {
   const teamId = String(formData.get("teamId") ?? "");
-  const email = String(formData.get("email") ?? "");
+  const email = z.email().safeParse(String(formData.get("email") ?? "").trim().toLowerCase());
+  if (!email.success) return { error: "Escribe un correo válido para el entrenador." };
   if (!teamId) return { error: "Equipo inválido" };
 
   const tdb = tenantDb(membership.schoolId);
   const team = await tdb.teams.findById(teamId);
   if (!team) return { error: "Equipo inválido" };
 
-  await createStaffInvitation(membership.schoolId, teamId, email || null);
+  const assigned = await assignExistingCoach(membership.schoolId, teamId, email.data);
+  if (!assigned) await createStaffInvitation(membership.schoolId, teamId, email.data);
   revalidatePath(`/admin/equipos/${teamId}`);
-  return { ok: true };
+  return { ok: true, assigned };
+  });
 }
 
 /** Revoca una invitación de entrenador pendiente. */
 export async function revokeCoachInvitation(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Revocar invitación de profesor", formData, async () => {
   const id = String(formData.get("id") ?? "");
   const teamId = String(formData.get("teamId") ?? "");
   if (id) await revokeStaffInvitation(id, membership.schoolId);
   if (teamId) revalidatePath(`/admin/equipos/${teamId}`);
+  });
 }
 
 /** Quita a un entrenador de un equipo. */
 export async function unassignCoach(formData: FormData) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership, session } = await requireRole(["owner"]);
+  return recordActivity(membership, session.user.name, "Retirar profesor del equipo", formData, async () => {
   const id = String(formData.get("id") ?? "");
   const teamId = String(formData.get("teamId") ?? "");
   if (id) await removeCoachTeam(id, membership.schoolId);
   if (teamId) revalidatePath(`/admin/equipos/${teamId}`);
+  });
 }

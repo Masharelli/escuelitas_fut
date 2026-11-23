@@ -1,20 +1,16 @@
 import { desc } from "drizzle-orm";
 
-import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { requireRole, OWNER_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
 import { charges as chargesTable } from "@/db/schema";
 import {
   KIND_LABELS,
   CHARGE_STATUS_LABELS,
   periodLabel,
+  effectiveMonth,
+  isOverdue,
   type ChargeKind,
 } from "@/lib/billing";
-
-function effectiveMonth(c: { periodMonth: string | null; createdAt: Date }) {
-  if (c.periodMonth) return c.periodMonth;
-  const d = c.createdAt;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
 
 /** Escapa un valor para CSV (comillas dobles + envoltura). */
 function cell(value: string | number): string {
@@ -27,12 +23,13 @@ function isoDate(d: Date | null): string {
 }
 
 export async function GET(req: Request) {
-  const { membership } = await requireRole(ADMIN_ROLES);
+  const { membership } = await requireRole(OWNER_ROLES);
   const tdb = tenantDb(membership.schoolId);
 
   const url = new URL(req.url);
   const mes = url.searchParams.get("mes") ?? "";
   const estado = url.searchParams.get("estado") ?? "";
+  const tipo = url.searchParams.get("tipo") ?? "";
 
   const rows = await tdb.charges.findMany({
     with: { student: true },
@@ -40,7 +37,12 @@ export async function GET(req: Request) {
   });
 
   const filtered = rows.filter((c) => {
-    if (estado && c.status !== estado) return false;
+    if (estado === "vencido") {
+      if (!isOverdue(c)) return false;
+    } else if (estado && c.status !== estado) {
+      return false;
+    }
+    if (tipo && c.kind !== tipo) return false;
     if (mes && effectiveMonth(c) !== mes) return false;
     return true;
   });

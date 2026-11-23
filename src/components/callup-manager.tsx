@@ -12,6 +12,8 @@ type Player = {
   name: string;
   convoked: boolean;
   rsvp: Rsvp;
+  /** Link wa.me con la convocatoria + link de confirmación (si hay teléfono). */
+  waHref?: string | null;
 };
 
 const RSVP_BADGE: Record<Rsvp, { label: string; cls: string }> = {
@@ -79,6 +81,17 @@ export function CallupManager({
               >
                 {RSVP_BADGE[p.rsvp].label}
               </span>
+            )}
+            {p.convoked && p.waHref && (
+              <a
+                href={p.waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Enviar convocatoria por WhatsApp"
+                className="shrink-0 rounded-full bg-emerald-500 px-2.5 py-0.5 text-xs font-semibold text-white transition hover:bg-emerald-600"
+              >
+                WhatsApp
+              </a>
             )}
           </li>
         ))}

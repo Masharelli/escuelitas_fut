@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getActiveMembership } from "@/lib/tenant";
-import { getMyChild } from "@/lib/guardians";
-import { PageHeader } from "@/components/ui";
+import { getGuardianMembership, getMyChild } from "@/lib/guardians";
+import { Card, PageHeader } from "@/components/ui";
 import { StudentDetail } from "@/components/student-detail";
+import { StudentStats } from "@/components/student-stats";
+import { getStudentStats } from "@/lib/stats";
+import { hasFeature } from "@/lib/plan";
+import { activeDiscountsByStudent, scholarshipLabel } from "@/lib/billing";
 
 export default async function HijoDetallePage({
   params,
@@ -12,10 +15,15 @@ export default async function HijoDetallePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { session } = await getActiveMembership();
+  const { session } = await getGuardianMembership();
 
   const child = await getMyChild(session.user.id, id);
   if (!child) notFound();
+  const [stats, discounts] = await Promise.all([
+    child.tenant && hasFeature(child.tenant.plan, "stats") ? getStudentStats(child.schoolId, child.id) : null,
+    activeDiscountsByStudent(child.schoolId, child.id),
+  ]);
+  const scholarships = discounts.get(child.id) ?? [];
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -35,6 +43,15 @@ export default async function HijoDetallePage({
       />
 
       <StudentDetail student={child} showGuardian={false} />
+      {scholarships.length > 0 && (
+        <Card className="mt-5">
+          <h2 className="font-display text-lg font-bold">Becas</h2>
+          <ul className="mt-2 space-y-1 text-sm text-ink-soft">
+            {scholarships.map((discount, index) => <li key={index}>{scholarshipLabel(discount)}</li>)}
+          </ul>
+        </Card>
+      )}
+      {stats && <div className="mt-5"><StudentStats stats={stats} /></div>}
     </div>
   );
 }
