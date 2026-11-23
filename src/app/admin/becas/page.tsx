@@ -32,12 +32,12 @@ export default async function BecasPage() {
         title="Becas"
         subtitle="Crea becas y asígnalas a uno o varios alumnos. Si hay varias, se aplica la que más reduce la mensualidad."
       />
-      <div className="mt-3 grid gap-4 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card>
           <p className="mb-3 text-sm font-semibold text-ink">Nueva beca/promoción</p>
           <CreateDiscountForm />
         </Card>
-        <div className="space-y-3 lg:col-span-2">
+        <div className="min-w-0 space-y-3 xl:col-span-2">
           {discounts.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">
               Aún no tienes becas ni promociones.
@@ -49,7 +49,7 @@ export default async function BecasPage() {
                 className="rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <p className="min-w-0 truncate font-semibold text-ink">
+                  <p className="min-w-0 font-semibold text-ink">
                     {d.name}{" "}
                     <span className="ml-1 rounded-full bg-pitch/10 px-2 py-0.5 text-xs font-medium text-pitch">
                       {d.kind === "percent"
@@ -95,10 +95,10 @@ export default async function BecasPage() {
 
                 <form
                   action={assignDiscount}
-                  className="mt-3 flex flex-wrap items-end gap-2"
+                  className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
                 >
                   <input type="hidden" name="discountId" value={d.id} />
-                  <label className="min-w-0 flex-1 text-xs text-ink-soft">
+                  <label className="min-w-0 text-xs text-ink-soft">
                     <span className="mb-1 block">
                       Asignar alumnos (Ctrl/Cmd para varios)
                     </span>
@@ -121,7 +121,7 @@ export default async function BecasPage() {
                   </label>
                   <button
                     type="submit"
-                    className="rounded-full bg-pitch px-4 py-2 text-xs font-semibold text-chalk transition hover:bg-pitch-deep"
+                    className="min-h-10 rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk transition hover:bg-pitch-deep"
                   >
                     Asignar
                   </button>

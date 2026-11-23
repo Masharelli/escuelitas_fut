@@ -22,7 +22,22 @@ body {
   background-color: var(--color-chalk);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  overflow-x: hidden;
+  overflow-wrap: anywhere;
+}
+
+@layer base {
+  input:not([type="checkbox"], [type="radio"]),
+  select,
+  textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (width < 64rem) {
+  body:has([data-mobile-menu-open]) {
+    overflow: hidden;
+  }
 }
 
 /* Entrada de la página: los elementos del hero suben suavemente al cargar. */

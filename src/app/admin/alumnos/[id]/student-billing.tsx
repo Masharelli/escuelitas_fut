@@ -71,16 +71,16 @@ export async function StudentBilling({
         {canManageScholarships && (
           <div className="mt-4 space-y-3">
             {options.length > 0 && (
-              <form action={assignDiscount} className="flex flex-wrap items-end gap-2">
+              <form action={assignDiscount} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <input type="hidden" name="studentIds" value={studentId} />
                 <SelectField name="discountId" label="Agregar beca" required options={options.map((discount) => ({
                   value: discount.id, label: scholarshipLabel(discount),
                 }))} />
-                <SubmitButton>Asignar</SubmitButton>
+                <SubmitButton inline>Asignar</SubmitButton>
               </form>
             )}
             {scholarships.length > 0 && (
-              <form action={setScholarshipPaymentDay} className="flex flex-wrap items-end gap-2">
+              <form action={setScholarshipPaymentDay} className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
                 <input type="hidden" name="studentId" value={studentId} />
                 <SelectField
                   label="Último día de pago con beca"
@@ -89,7 +89,7 @@ export async function StudentBilling({
                   defaultValue={scholarshipPaymentDay?.toString()}
                   placeholder="Usar el vencimiento general"
                 />
-                <SubmitButton>Guardar día</SubmitButton>
+                <SubmitButton inline>Guardar día</SubmitButton>
               </form>
             )}
             {available.length === 0 && <SecondaryLink href="/admin/becas">Crear beca</SecondaryLink>}
@@ -112,7 +112,7 @@ export async function StudentBilling({
               const canUndo = isManualPayment(charge);
               return (
                 <li key={charge.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                  <div>
+                  <div className="min-w-0 flex-[1_1_17rem]">
                     <p className="text-sm font-semibold text-ink">{charge.description}</p>
                     <p className="text-xs text-ink-soft">
                       {formatMoney(charge.amountCents, charge.currency)}
@@ -128,7 +128,7 @@ export async function StudentBilling({
                       <form action={canMark ? markChargePaid : undoManualPayment}>
                         <input type="hidden" name="id" value={charge.id} />
                         <input type="hidden" name="back" value={back} />
-                        <SubmitButton>{canMark ? "Marcar pagado" : "Deshacer pago"}</SubmitButton>
+                        <SubmitButton inline>{canMark ? "Marcar pagado" : "Deshacer pago"}</SubmitButton>
                       </form>
                     )}
                   </div>

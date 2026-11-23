@@ -33,8 +33,8 @@ export default async function AdminTorneosPage() {
         subtitle="Agrupa partidos en un torneo y lleva su tabla de posiciones."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="order-2 lg:order-1">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="order-2 min-w-0 xl:order-1">
           {tournaments.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">
               Aún no tienes torneos. Crea uno aquí al lado.
@@ -67,7 +67,7 @@ export default async function AdminTorneosPage() {
           )}
         </div>
 
-        <div className="order-1 lg:order-2">
+        <div className="order-1 min-w-0 xl:order-2">
           <Card>
             <p className="mb-3 text-sm font-semibold text-ink">Nuevo torneo</p>
             <CreateTournamentForm categories={categoryOptions} />

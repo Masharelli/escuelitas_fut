@@ -45,7 +45,7 @@ export function ResultForm({
         value={players.map((p) => p.id).join(",")}
       />
 
-      <div className="flex items-end justify-center gap-4">
+      <div className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 sm:gap-4">
         <ScoreBox label="Nosotros" name="ourScore" defaultValue={ourScore} />
         <span className="pb-2 font-display text-2xl font-bold text-ink-soft">
           -
@@ -62,7 +62,7 @@ export function ResultForm({
           <p className="mb-2 text-sm font-semibold text-ink">
             Estadísticas de jugadores
           </p>
-          <div className="overflow-x-auto rounded-xl border border-ink/10">
+          <div role="region" aria-label="Estadísticas de jugadores" tabIndex={0} className="overflow-x-auto rounded-xl border border-ink/10 focus-visible:outline-2 focus-visible:outline-pitch">
             <table className="w-full min-w-[460px] text-sm">
               <thead className="bg-chalk-deep/60 text-xs text-ink-soft">
                 <tr>
@@ -155,8 +155,8 @@ function ScoreBox({
   defaultValue: number | null;
 }) {
   return (
-    <label className="flex flex-col items-center gap-1">
-      <span className="max-w-[8rem] truncate text-xs font-medium text-ink-soft">
+    <label className="flex min-w-0 flex-col items-center gap-1 text-center">
+      <span className="text-xs font-medium leading-snug text-ink-soft">
         {label}
       </span>
       <input

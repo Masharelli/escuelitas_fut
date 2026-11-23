@@ -58,12 +58,12 @@ export function FilterBar({
   };
 
   const fieldClass =
-    "rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-sm text-ink shadow-sm outline-none focus:border-pitch focus:ring-2 focus:ring-pitch/20";
+    "min-h-11 w-full min-w-0 rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-sm text-ink shadow-sm outline-none focus:border-pitch focus:ring-2 focus:ring-pitch/20 sm:w-auto sm:flex-[1_1_11rem]";
 
   return (
-    <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center">
+    <div className="mb-5 flex min-w-0 flex-wrap items-center gap-2">
       {search && (
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-[1_1_100%] xl:flex-[2_1_14rem]">
           <svg
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft"
             width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"
@@ -76,7 +76,8 @@ export function FilterBar({
             defaultValue={sp.get(search.key) ?? ""}
             onChange={(e) => onSearch(e.target.value)}
             placeholder={search.placeholder}
-            className="w-full rounded-xl border border-ink/15 bg-white py-2.5 pl-10 pr-3 text-sm text-ink shadow-sm outline-none placeholder:text-ink-soft/60 focus:border-pitch focus:ring-2 focus:ring-pitch/20"
+            aria-label={search.placeholder}
+            className="min-h-11 w-full rounded-xl border border-ink/15 bg-white py-2.5 pl-10 pr-3 text-sm text-ink shadow-sm outline-none placeholder:text-ink-soft/60 focus:border-pitch focus:ring-2 focus:ring-pitch/20"
           />
         </div>
       )}
@@ -107,7 +108,7 @@ export function FilterBar({
         <button
           type="button"
           onClick={clear}
-          className="rounded-xl px-3 py-2.5 text-sm font-medium text-ink-soft transition hover:text-ink"
+          className="min-h-11 shrink-0 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-soft transition hover:bg-chalk-deep hover:text-ink"
         >
           Limpiar
         </button>

@@ -38,22 +38,22 @@ export function StudentList({
   canDelete?: boolean;
 }) {
   return (
-    <Card className="p-0 sm:p-0">
+    <Card padded={false}>
       <ul className="divide-y divide-ink/10">
         {students.map((s) => (
-          <li key={s.id} className="flex flex-wrap items-center gap-3 p-4 sm:gap-4">
+          <li key={s.id} className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:gap-4">
             <div
-              className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4"
+              className="flex w-full min-w-0 flex-1 items-start gap-3 sm:w-auto sm:gap-4"
             >
               <Avatar name={s.firstName} photoUrl={s.photoUrl} />
-              <div className="min-w-0">
-                <p className="flex items-center gap-2 truncate font-semibold text-ink">
-                  {readOnly ? `${s.firstName} ${s.lastName}` : <Link href={`/admin/alumnos/${s.id}`}>{s.firstName} {s.lastName}</Link>}
+              <div className="min-w-0 flex-1">
+                <p className="flex items-start gap-2 font-semibold leading-snug text-ink">
+                  {readOnly ? <span>{s.firstName} {s.lastName}</span> : <Link href={`/admin/alumnos/${s.id}`} className="hover:text-pitch">{s.firstName} {s.lastName}</Link>}
                   {s.light && (
                     <span
                       title={readOnly ? s.light === "green" ? "Pago al corriente" : "Pago pendiente" : TRAFFIC_LIGHT_LABELS[s.light]}
                       aria-label={readOnly ? s.light === "green" ? "Pago al corriente" : "Pago pendiente" : TRAFFIC_LIGHT_LABELS[s.light]}
-                      className={`h-2.5 w-2.5 shrink-0 rounded-full ${LIGHT_CLS[s.light]}`}
+                      className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${LIGHT_CLS[s.light]}`}
                     />
                   )}
                 </p>
@@ -73,15 +73,15 @@ export function StudentList({
               </div>
             </div>
             {s.guardianName && (
-              <div className="hidden text-right text-sm text-ink-soft sm:block">
+              <div className="hidden w-40 shrink-0 text-right text-sm text-ink-soft xl:block">
                 <p className="text-ink">{s.guardianName}</p>
                 {s.guardianPhone && <p className="text-xs">{s.guardianPhone}</p>}
               </div>
             )}
-            {!readOnly && <div className="flex items-center gap-1">
+            {!readOnly && <div className="ml-14 flex flex-wrap items-center gap-1 sm:ml-0 sm:shrink-0">
               <Link
                 href={`/admin/alumnos/${s.id}/editar`}
-                className="rounded-full px-3 py-1.5 text-sm font-medium text-pitch transition hover:bg-pitch/10"
+                className="inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-medium text-pitch transition hover:bg-pitch/10"
               >
                 Editar
               </Link>
@@ -90,7 +90,7 @@ export function StudentList({
                 <button
                   type="submit"
                   aria-label={`Eliminar a ${s.firstName}`}
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-50 hover:text-red-600"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-soft transition hover:bg-red-50 hover:text-red-600"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path
@@ -133,7 +133,7 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-chalk-deep px-2.5 py-0.5 text-xs font-medium text-ink-soft">
+    <span className="max-w-full rounded-lg bg-chalk-deep px-2.5 py-1 text-xs font-medium leading-snug text-ink-soft">
       {children}
     </span>
   );

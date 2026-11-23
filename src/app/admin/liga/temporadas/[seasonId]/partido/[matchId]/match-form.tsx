@@ -42,7 +42,7 @@ export function MatchStatsForm({
       <input type="hidden" name="playerIds" value={allPlayerIds} />
 
       {/* Marcador */}
-      <div className="flex items-end justify-center gap-4">
+      <div className="mx-auto grid max-w-md grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 sm:gap-4">
         <ScoreBox label={home.name} name="homeScore" defaultValue={homeScore} scoreNoun={scoreNoun} />
         <span className="pb-2 font-display text-2xl font-bold text-ink-soft">–</span>
         <ScoreBox label={away.name} name="awayScore" defaultValue={awayScore} scoreNoun={scoreNoun} />
@@ -79,7 +79,7 @@ function RosterTable({
           Este equipo no tiene roster. Agrégalo en Equipos.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-ink/10">
+        <div role="region" aria-label={`Estadísticas de ${team.name}`} tabIndex={0} className="overflow-x-auto rounded-xl border border-ink/10 focus-visible:outline-2 focus-visible:outline-pitch">
           <table className="w-full min-w-[320px] text-sm">
             <thead className="bg-chalk-deep/60 text-xs text-ink-soft">
               <tr>
@@ -95,6 +95,7 @@ function RosterTable({
               {team.roster.map((p) => (
                 <tr key={p.id} className="border-t border-ink/10">
                   <td className="px-3 py-2 text-ink">
+                    <input type="hidden" name={`team_${p.id}`} value={p.teamId} />
                     {p.number && (
                       <span className="mr-2 inline-flex h-5 min-w-5 items-center justify-center rounded bg-chalk-deep px-1 text-xs font-bold text-ink-soft">
                         {p.number}
@@ -102,7 +103,6 @@ function RosterTable({
                     )}
                     {p.name}
                   </td>
-                  <input type="hidden" name={`team_${p.id}`} value={p.teamId} />
                   {statFields.map((s) => (
                     <td key={s.key} className="px-2 py-2 text-center">
                       <input
@@ -136,8 +136,8 @@ function ScoreBox({
   scoreNoun: string;
 }) {
   return (
-    <label className="flex flex-col items-center gap-1">
-      <span className="max-w-[9rem] truncate text-xs font-medium text-ink-soft">
+    <label className="flex min-w-0 flex-col items-center gap-1 text-center">
+      <span className="text-xs font-medium leading-snug text-ink-soft">
         {label}
       </span>
       <input

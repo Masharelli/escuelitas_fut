@@ -13,7 +13,7 @@ type Child = {
 
 export function ChildrenGrid({ kids }: { kids: Child[] }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {kids.map((c) => (
         <Link
           key={c.id}
@@ -22,11 +22,11 @@ export function ChildrenGrid({ kids }: { kids: Child[] }) {
         >
           <Avatar name={c.firstName} photoUrl={c.photoUrl} />
           <div className="min-w-0 flex-1">
-            <p className="truncate font-semibold text-ink">
+            <p className="font-semibold leading-snug text-ink">
               {c.firstName} {c.lastName}
             </p>
             {c.tenant && (
-              <p className="truncate text-xs text-ink-soft">{c.tenant.name}</p>
+              <p className="mt-1 text-xs text-ink-soft">{c.tenant.name}</p>
             )}
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               {c.category && <Badge>{c.category.name}</Badge>}

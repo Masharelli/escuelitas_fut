@@ -68,8 +68,8 @@ export default async function AdminPartidosPage({
         subtitle="Agenda los partidos de tus equipos y captura los resultados."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <div className="order-2 lg:order-1">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="order-2 min-w-0 xl:order-1">
           <FilterBar
             selects={[
               { key: "equipo", allLabel: "Todos los equipos", options: teamOptions },
@@ -104,7 +104,7 @@ export default async function AdminPartidosPage({
           )}
         </div>
 
-        <div className="order-1 lg:order-2">
+        <div className="order-1 min-w-0 xl:order-2">
           <Card>
             <p className="mb-3 text-sm font-semibold text-ink">Nuevo partido</p>
             <CreateMatchForm teams={teamOptions} tournaments={tournamentOptions} />

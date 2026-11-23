@@ -2,17 +2,17 @@
 
 import { useFormStatus } from "react-dom";
 
-export function SubmitButton({ children }: { children: React.ReactNode }) {
+export function SubmitButton({ children, inline = false }: { children: React.ReactNode; inline?: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-pitch px-5 py-3 font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch disabled:cursor-not-allowed disabled:opacity-60"
+      className={`inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-full bg-pitch px-5 py-2.5 text-center font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch disabled:cursor-not-allowed disabled:opacity-60 ${inline ? "text-sm" : "w-full"}`}
     >
       {pending && (
         <svg
-          className="h-4 w-4 animate-spin"
+          className="h-4 w-4 shrink-0 animate-spin motion-reduce:animate-none"
           viewBox="0 0 24 24"
           fill="none"
           aria-hidden="true"

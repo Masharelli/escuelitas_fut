@@ -14,7 +14,7 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         {eyebrow && (
           <p className="text-sm font-medium text-pitch">{eyebrow}</p>
         )}
@@ -23,7 +23,7 @@ export function PageHeader({
         </h1>
         {subtitle && <p className="mt-1 text-ink-soft">{subtitle}</p>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && <div className="min-w-0 max-w-full sm:max-w-[50%]">{action}</div>}
     </div>
   );
 }
@@ -31,13 +31,15 @@ export function PageHeader({
 export function Card({
   children,
   className = "",
+  padded = true,
 }: {
   children: React.ReactNode;
   className?: string;
+  padded?: boolean;
 }) {
   return (
     <div
-      className={`rounded-2xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-6 ${className}`}
+      className={`min-w-0 rounded-2xl border border-ink/10 bg-white/80 shadow-sm ${padded ? "p-4 sm:p-6" : ""} ${className}`}
     >
       {children}
     </div>
@@ -56,7 +58,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-ink/15 bg-white/60 p-10 text-center">
+    <div className="rounded-2xl border border-dashed border-ink/15 bg-white/60 px-5 py-8 text-center sm:p-10">
       {icon && (
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-pitch/10 text-pitch">
           {icon}
@@ -84,7 +86,7 @@ export function PrimaryLink({
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center gap-2 rounded-full bg-pitch px-5 py-2.5 text-sm font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
+      className="inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-full bg-pitch px-5 py-2.5 text-center text-sm font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch [&>svg]:shrink-0"
     >
       {children}
     </Link>
@@ -102,7 +104,7 @@ export function SecondaryLink({
   return (
     <Link
       href={href}
-      className="inline-flex items-center justify-center gap-2 rounded-full border border-ink/15 bg-white px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-ink/30 hover:bg-chalk-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
+      className="inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-full border border-ink/15 bg-white px-5 py-2.5 text-center text-sm font-semibold text-ink transition hover:border-ink/30 hover:bg-chalk-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch [&>svg]:shrink-0"
     >
       {children}
     </Link>

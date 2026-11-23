@@ -93,8 +93,8 @@ export default async function CoachTeamPage({
         subtitle={`${students.length} alumno${students.length === 1 ? "" : "s"}.`}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="order-2 space-y-6 lg:order-1">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="order-2 min-w-0 space-y-6 xl:order-1">
           <section>
             <h2 className="mb-2 font-display text-lg font-bold">Sesiones</h2>
             {sessions.length === 0 ? (
@@ -194,7 +194,7 @@ export default async function CoachTeamPage({
           </section>
         </div>
 
-        <div className="order-1 space-y-4 lg:order-2">
+        <div className="order-1 min-w-0 space-y-4 xl:order-2">
           <Card>
             <p className="mb-3 text-sm font-semibold text-ink">Avisos a tutores</p>
             <TeamNoticeForm teamId={team.id} guardians={guardians} />

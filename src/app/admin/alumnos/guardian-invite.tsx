@@ -122,11 +122,11 @@ function PendingInvite({
 
   return (
     <li className="rounded-xl border border-tangerine/30 bg-tangerine/[0.06] p-3.5">
-      <div className="flex items-center gap-2 text-sm font-medium text-ink">
+      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
         <span className="h-2 w-2 shrink-0 rounded-full bg-tangerine" />
         Enlace pendiente
         {inv.email && (
-          <span className="font-normal text-ink-soft">· {inv.email}</span>
+          <span className="min-w-0 font-normal text-ink-soft">{inv.email}</span>
         )}
       </div>
 
@@ -134,7 +134,7 @@ function PendingInvite({
         <code className="min-w-0 flex-1 truncate rounded-lg border border-ink/10 bg-white px-3 py-2 text-xs text-ink-soft">
           {path}
         </code>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex max-w-full flex-wrap gap-2 sm:shrink-0">
           <button
             type="button"
             onClick={copy}

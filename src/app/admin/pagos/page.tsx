@@ -170,7 +170,7 @@ export default async function AdminPagosPage({
         </span>
       </form>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card>
           <p className="mb-3 text-sm font-semibold text-ink">Nuevo plan</p>
           <CreatePlanForm categories={categoryOptions} />
@@ -206,29 +206,33 @@ export default async function AdminPagosPage({
           {plans.map((p) => (
             <li
               key={p.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm"
+              className="rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm"
             >
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-ink">
-                  {p.name}{" "}
-                  <span className="ml-1 rounded-full bg-chalk-deep px-2 py-0.5 text-xs font-medium text-ink-soft">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0 flex-[1_1_14rem]">
+                  <p className="font-semibold leading-snug text-ink">{p.name}</p>
+                  <span className="mt-1 inline-block rounded-full bg-chalk-deep px-2 py-0.5 text-xs font-medium text-ink-soft">
                     {KIND_LABELS[p.kind as ChargeKind]}
                   </span>
-                </p>
-                <p className="text-xs text-ink-soft">
-                  {formatMoney(p.amountCents, p.currency)}
-                  {p.category ? ` · ${p.category.name}` : " · toda la escuela"}
-                  {!p.active && " · inactivo"}
-                </p>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    {formatMoney(p.amountCents, p.currency)}
+                    {p.category ? ` · ${p.category.name}` : " · toda la escuela"}
+                    {!p.active && " · inactivo"}
+                  </p>
+                </div>
+                <DeleteForm id={p.id} />
               </div>
-              <div className="flex flex-col items-end gap-2"><DeleteForm id={p.id} /><details className="w-full"><summary className="cursor-pointer text-sm font-medium text-pitch">Modificar precio</summary><div className="mt-3"><CreatePlanForm categories={categoryOptions} plan={p} /></div></details></div>
+              <details className="mt-2 max-w-md">
+                <summary className="cursor-pointer py-2 text-sm font-medium text-pitch">Modificar precio</summary>
+                <div className="mt-2"><CreatePlanForm categories={categoryOptions} plan={p} /></div>
+              </details>
             </li>
           ))}
         </ul>
       )}
 
       {/* Cargos */}
-      <div className="mt-8 flex items-center justify-between">
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-lg font-bold">Cargos</h2>
         {pending.length > 0 && (
           <span className="text-sm text-ink-soft">
@@ -277,18 +281,18 @@ export default async function AdminPagosPage({
           {filteredCharges.map((c) => (
             <li
               key={c.id}
-              className="flex flex-col gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm xl:flex-row xl:items-center xl:justify-between"
             >
               <div className="min-w-0">
-                <p className="truncate font-semibold text-ink">
+                <p className="font-semibold leading-snug text-ink">
                   {c.student.firstName} {c.student.lastName}
                 </p>
-                <p className="truncate text-xs text-ink-soft">
+                <p className="text-xs text-ink-soft">
                   {c.description} · {formatMoney(c.amountCents, c.currency)}
                   {c.periodMonth ? ` · ${periodLabel(c.periodMonth)}` : ""}
                 </p>
               </div>
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+              <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
                 <StatusBadge status={c.status} />
                 {c.status === "pending" && (
                   <>
@@ -378,8 +382,8 @@ async function OperationalPayments({ schoolId, studentId }: { schoolId: string; 
   return (
     <div className="mx-auto w-full max-w-3xl">
       <PageHeader eyebrow="Operación" title="Registrar pagos" subtitle="Consulta los cargos autorizados por el dueño y registra los pagos de cada alumno." />
-      <form method="get" className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="min-w-0 flex-1 text-sm text-ink-soft">Alumno
+      <form method="get" className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+        <label className="min-w-0 text-sm text-ink-soft">Alumno
           <select name="alumno" required defaultValue={selected?.id ?? ""} className="mt-1 block w-full rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-ink">
             <option value="">Selecciona un alumno</option>
             {students.map((s) => <option key={s.id} value={s.id}>{s.firstName} {s.lastName}</option>)}
@@ -390,7 +394,7 @@ async function OperationalPayments({ schoolId, studentId }: { schoolId: string; 
       {selected && (charges.length ? <ul className="space-y-3">{charges.map((c) => (
         <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4">
           <div><p className="font-semibold">{c.description}</p><p className="text-sm text-ink-soft">{formatMoney(c.amountCents, c.currency)}{c.periodMonth ? ` · ${periodLabel(c.periodMonth)}` : ""}</p></div>
-          <div className="flex items-center gap-2"><StatusBadge status={c.status} />{c.status === "pending" && <form action={markChargePaid}><input type="hidden" name="id" value={c.id} /><input type="hidden" name="studentId" value={selected.id} /><button className="rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk">Registrar pago</button></form>}</div>
+          <div className="flex flex-wrap items-center gap-2"><StatusBadge status={c.status} />{c.status === "pending" && <form action={markChargePaid}><input type="hidden" name="id" value={c.id} /><input type="hidden" name="studentId" value={selected.id} /><button className="min-h-11 rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk">Registrar pago</button></form>}</div>
         </li>
       ))}</ul> : <p className="text-sm text-ink-soft">Este alumno no tiene cargos registrados.</p>)}
     </div>

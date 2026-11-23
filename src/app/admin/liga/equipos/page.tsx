@@ -26,7 +26,7 @@ export default async function LigaEquiposPage() {
         subtitle="Registra los equipos de la liga, su responsable y su roster."
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Card>
           <p className="mb-3 text-sm font-semibold text-ink">Nuevo equipo</p>
           <CreateLeagueTeamForm />

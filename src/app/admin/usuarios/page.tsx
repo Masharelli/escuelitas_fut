@@ -40,17 +40,17 @@ export default async function UsuariosPage() {
             const bothRoles = person.role === "admin" && coaches;
             return (
               <li key={person.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4">
-                <div>
-                  <p className="font-semibold">{person.user.name ?? (person.role === "coach" ? "Entrenador" : "Administrador")}</p>
+                <div className="min-w-0 flex-[1_1_16rem]">
+                  <p className="font-semibold leading-snug">{person.user.name ?? (person.role === "coach" ? "Entrenador" : "Administrador")}</p>
                   <p className="text-sm text-ink-soft">{person.user.email}</p>
                   {person.role === "admin" && <p className="text-sm text-ink-soft">Administrador</p>}
                   {coaches && <p className="text-sm text-ink-soft">Entrenador · {teamNames.join(", ") || "Sin equipo asignado"}</p>}
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex max-w-full flex-wrap gap-2">
                   {person.role === "coach" && (
                     <form action={grantStaffAdministration}>
                       <input type="hidden" name="id" value={person.id} />
-                      <button className="rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk">
+                      <button className="min-h-11 rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk">
                         Dar acceso de administrador
                       </button>
                     </form>
@@ -101,7 +101,7 @@ function RemoveAccess({ id, email, role, label }: {
     <form action={removeStaffAccess}>
       <input type="hidden" name="id" value={id} />
       {role && <input type="hidden" name="role" value={role} />}
-      <button aria-label={`${label} de ${email}`} className="rounded-full border border-ink/15 px-4 py-2 text-sm text-red-700">
+      <button aria-label={`${label} de ${email}`} className="min-h-11 rounded-full border border-ink/15 px-4 py-2 text-sm text-red-700">
         {label}
       </button>
     </form>

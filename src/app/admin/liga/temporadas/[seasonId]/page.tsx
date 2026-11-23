@@ -153,8 +153,8 @@ export default async function SeasonDetailPage({
         eyebrow={`${cfg.emoji} ${cfg.label}`}
         title={season.name}
         action={
-          <div className="flex items-center gap-2">
-            <form action={setSeasonStatus} className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <form action={setSeasonStatus} className="flex min-w-0 flex-wrap items-center gap-1">
               <input type="hidden" name="id" value={season.id} />
               <select
                 name="status"
@@ -199,13 +199,13 @@ export default async function SeasonDetailPage({
             {season.seasonTeams.map((st) => (
               <li
                 key={st.id}
-                className="flex items-center gap-1.5 rounded-full border border-ink/10 bg-chalk py-1 pl-3 pr-1.5 text-sm"
+                className="flex max-w-full items-center gap-2 rounded-xl border border-ink/10 bg-chalk py-1 pl-3 pr-1.5 text-sm"
               >
                 <span
-                  className="h-2.5 w-2.5 rounded-full"
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: st.team.color || "var(--color-pitch)" }}
                 />
-                <span className="max-w-[10rem] truncate">{st.team.name}</span>
+                <span className="min-w-0 leading-snug">{st.team.name}</span>
                 <form action={unregisterTeam}>
                   <input type="hidden" name="id" value={st.id} />
                   <input type="hidden" name="seasonId" value={season.id} />
@@ -214,7 +214,7 @@ export default async function SeasonDetailPage({
                     aria-label={`Quitar ${st.team.name}`}
                     title={`Quitar ${st.team.name}`}
                     disabled={hasSchedule}
-                    className="inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-soft transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -316,7 +316,7 @@ export default async function SeasonDetailPage({
               return (
                 <li
                   key={c.id}
-                  className="flex flex-col gap-2 rounded-xl border border-ink/10 bg-white/80 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 rounded-xl border border-ink/10 bg-white/80 px-3 py-2.5 xl:flex-row xl:items-center xl:justify-between"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-ink">{c.team.name}</p>
@@ -324,7 +324,7 @@ export default async function SeasonDetailPage({
                       {formatMoney(c.amountCents, c.currency)}
                     </p>
                   </div>
-                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+                  <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${st.cls}`}>
                       {st.label}
                     </span>

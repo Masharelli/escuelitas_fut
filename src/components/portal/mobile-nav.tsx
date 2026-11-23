@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Wordmark } from "@/components/brand/wordmark";
 import { LogoutButton } from "@/components/logout-button";
@@ -35,34 +35,44 @@ export function MobileNav({
   notifications?: { href: string; unread: number };
 }) {
   const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
   const canSwitch = !!schools && schools.length > 1 && !!activeSchoolId;
 
-  // Bloquea el scroll del fondo y permite cerrar con Escape mientras está abierto.
+  const closeMenu = useCallback(() => {
+    setOpen(false);
+    menuButton.current?.focus();
+  }, []);
+
+  // El panel se cierra con Escape o al pasar a la navegación de escritorio.
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    closeButton.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closeMenu();
     };
+    const desktop = window.matchMedia("(min-width: 64rem)");
+    const onResize = () => { if (desktop.matches) setOpen(false); };
+    desktop.addEventListener("change", onResize);
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      desktop.removeEventListener("change", onResize);
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, closeMenu]);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden" data-mobile-menu-open={open ? "" : undefined}>
       {/* Barra superior */}
       <header className="flex items-center justify-between border-b border-ink/10 bg-white/70 px-3 py-3 backdrop-blur">
-        <div className="flex items-center gap-1">
+        <div className="flex min-w-0 items-center gap-1">
           <button
+            ref={menuButton}
             type="button"
             onClick={() => setOpen(true)}
             aria-label="Abrir menú"
             aria-expanded={open}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-ink transition hover:bg-chalk-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink transition hover:bg-chalk-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
@@ -75,7 +85,7 @@ export function MobileNav({
           </button>
           <Wordmark size="md" />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {notifications && (
             <NotificationBell
               href={notifications.href}
@@ -90,12 +100,13 @@ export function MobileNav({
       <div
         className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`}
         aria-hidden={!open}
+        inert={!open}
       >
         <button
           type="button"
-          tabIndex={open ? 0 : -1}
+          tabIndex={-1}
           aria-label="Cerrar menú"
-          onClick={() => setOpen(false)}
+          onClick={closeMenu}
           className={`absolute inset-0 bg-ink/40 transition-opacity duration-200 ${
             open ? "opacity-100" : "opacity-0"
           }`}
@@ -104,17 +115,18 @@ export function MobileNav({
           role="dialog"
           aria-modal="true"
           aria-label="Menú de navegación"
-          className={`absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-white px-4 py-5 shadow-xl transition-transform duration-200 ease-out ${
+          className={`absolute inset-y-0 left-0 flex w-[86%] max-w-xs flex-col bg-white px-4 pt-5 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl transition-transform duration-200 ease-out motion-reduce:transition-none ${
             open ? "translate-x-0" : "-translate-x-full"
           }`}
         >
           <div className="flex items-center justify-between">
             <Wordmark size="md" href={null} />
             <button
+              ref={closeButton}
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={closeMenu}
               aria-label="Cerrar menú"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition hover:bg-chalk-deep hover:text-ink"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-soft transition hover:bg-chalk-deep hover:text-ink"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
@@ -145,8 +157,8 @@ export function MobileNav({
 
           {/* Cierra el panel al tocar una sección (los hijos son enlaces). */}
           <div
-            className="mt-5 flex-1 overflow-y-auto"
-            onClick={() => setOpen(false)}
+            className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain py-1"
+            onClick={(event) => { if ((event.target as Element).closest("a")) setOpen(false); }}
           >
             <PortalNav items={nav} />
           </div>

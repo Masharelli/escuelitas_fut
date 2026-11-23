@@ -80,9 +80,9 @@ export function CoachAssign({
         </ul>
       )}
 
-      <form action={action} className="mt-4 flex flex-wrap items-end gap-2">
+      <form action={action} className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <input type="hidden" name="teamId" value={teamId} />
-        <label className="min-w-0 flex-1">
+        <label className="min-w-0">
           <span className="mb-1.5 block text-sm font-medium text-ink">
             Correo del entrenador
           </span>
@@ -94,7 +94,7 @@ export function CoachAssign({
             className="w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-ink shadow-sm outline-none transition focus:border-pitch focus:ring-2 focus:ring-pitch/20"
           />
         </label>
-        <SubmitButton>Asignar o invitar</SubmitButton>
+        <SubmitButton inline>Asignar o invitar</SubmitButton>
       </form>
       {state?.ok && (
         <p role="status" className="mt-2 text-sm text-pitch">

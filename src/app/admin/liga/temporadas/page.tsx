@@ -45,7 +45,7 @@ export default async function LigaTemporadasPage() {
         subtitle="Crea una temporada y entra a ella para inscribir equipos, generar el calendario y llevar la tabla."
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Card>
           <p className="mb-3 text-sm font-semibold text-ink">Nueva temporada</p>
           <CreateSeasonForm />

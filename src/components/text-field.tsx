@@ -21,7 +21,7 @@ export function TextField({
   step?: string;
 }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="mb-1.5 block text-sm font-medium text-ink">{label}</span>
       <input
         name={name}

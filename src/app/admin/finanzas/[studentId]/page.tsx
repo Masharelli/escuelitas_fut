@@ -83,16 +83,16 @@ export default async function EstadoCuentaPage({
           {charges.map((c) => (
             <li
               key={c.id}
-              className="flex flex-col gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm xl:flex-row xl:items-center xl:justify-between"
             >
               <div className="min-w-0">
-                <p className="truncate font-semibold text-ink">{c.description}</p>
-                <p className="truncate text-xs text-ink-soft">
+                <p className="font-semibold leading-snug text-ink">{c.description}</p>
+                <p className="text-xs text-ink-soft">
                   {KIND_LABELS[c.kind as ChargeKind]}
                   {c.periodMonth ? ` · ${periodLabel(c.periodMonth)}` : ""}
                 </p>
               </div>
-              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+              <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
                 <span className="font-display font-bold text-ink">
                   {formatMoney(c.amountCents, c.currency)}
                 </span>

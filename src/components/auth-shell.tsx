@@ -55,12 +55,12 @@ export function AuthShell({
         )}
       </header>
 
-      <section className="relative z-10 flex w-full min-w-0 flex-1 flex-col items-center justify-center px-6 pb-16">
+      <section className="relative z-10 flex w-full min-w-0 flex-1 flex-col items-center justify-center px-4 pb-12 sm:px-6 sm:pb-16">
         <div className="rise flex w-full max-w-md flex-col items-center">
           {brand ? (
             <div className="flex flex-col items-center gap-2.5">
               <SchoolCrest name={brand.name} logoUrl={brand.logoUrl} size={64} />
-              <span className="font-display text-xl font-extrabold tracking-tight">
+              <span className="text-center font-display text-xl font-extrabold tracking-tight">
                 {brand.name}
               </span>
             </div>
@@ -68,7 +68,7 @@ export function AuthShell({
             <Wordmark size="lg" />
           )}
 
-          <div className="mt-8 w-full rounded-2xl border border-ink/10 bg-white/85 p-6 shadow-sm backdrop-blur sm:p-8">
+          <div className="mt-6 w-full rounded-2xl border border-ink/10 bg-white/85 p-5 shadow-sm backdrop-blur sm:mt-8 sm:p-8">
             <h1 className="font-display text-2xl font-extrabold tracking-tight">
               {title}
             </h1>

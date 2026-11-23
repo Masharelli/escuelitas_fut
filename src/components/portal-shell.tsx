@@ -35,7 +35,7 @@ export function PortalShell({
   return (
     <div className="flex w-full min-w-0 flex-1 bg-chalk text-ink">
       {/* Menú lateral (escritorio) */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-ink/10 bg-white/70 px-4 py-6 md:flex">
+      <aside className="sticky top-0 hidden h-dvh shrink-0 flex-col self-start border-r border-ink/10 bg-white/70 px-4 py-5 lg:flex lg:w-56 xl:w-64">
         <div className="px-2">
           <Wordmark size="md" />
         </div>
@@ -58,7 +58,7 @@ export function PortalShell({
           <SchoolSwitcher schools={schools} activeId={activeSchoolId} />
         )}
 
-        <div className="mt-6 flex-1">
+        <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
           <PortalNav items={nav} />
         </div>
 
@@ -86,7 +86,7 @@ export function PortalShell({
           notifications={notifications}
         />
 
-        <main className="flex-1 px-5 py-6 sm:px-8 sm:py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 xl:px-8">{children}</main>
       </div>
     </div>
   );

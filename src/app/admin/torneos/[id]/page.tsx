@@ -82,58 +82,47 @@ export default async function TorneoDetailPage({
       </p>
 
       {table.length > 0 && (
-        <div className="mb-4 overflow-x-auto">
-          <div className="min-w-[640px] space-y-1.5">
-            <div className="flex items-center gap-2 px-2 text-xs font-medium text-ink-soft">
-              <span className="w-6 text-center">#</span>
-              <span className="flex-1">Equipo</span>
-              <span className="w-10 text-center">G</span>
-              <span className="w-10 text-center">E</span>
-              <span className="w-10 text-center">P</span>
-              <span className="w-12 text-center">GF</span>
-              <span className="w-12 text-center">GC</span>
-              <span className="w-10 text-center">Pts</span>
-              <span className="w-[120px]" />
-            </div>
-            {table.map((s, i) => (
-              <form
-                key={s.id}
-                action={updateStanding}
-                className={`flex items-center gap-2 rounded-xl border px-2 py-2 shadow-sm ${
-                  s.isOurs ? "border-pitch/40 bg-pitch/[0.06]" : "border-ink/10 bg-white/80"
-                }`}
-              >
-                <input type="hidden" name="id" value={s.id} />
-                <input type="hidden" name="tournamentId" value={tournament.id} />
-                <span className="w-6 text-center font-display font-bold text-ink-soft">
-                  {i + 1}
-                </span>
-                <input
-                  name="teamName"
-                  defaultValue={s.teamName}
-                  readOnly
-                  className="flex-1 truncate bg-transparent text-sm font-semibold text-ink outline-none"
-                />
-                <NumCell name="won" value={s.won} />
-                <NumCell name="drawn" value={s.drawn} />
-                <NumCell name="lost" value={s.lost} />
-                <NumCell name="goalsFor" value={s.goalsFor} wide />
-                <NumCell name="goalsAgainst" value={s.goalsAgainst} wide />
-                <span className="w-10 text-center font-display font-bold text-ink">
-                  {s.pts}
-                </span>
-                <div className="flex w-[120px] shrink-0 items-center justify-end gap-1">
-                  <button
-                    type="submit"
-                    className="rounded-full bg-pitch px-2.5 py-1 text-xs font-semibold text-chalk transition hover:bg-pitch-deep"
-                  >
-                    Guardar
-                  </button>
-                  <DeleteStandingButton id={s.id} />
+        <div className="mb-4 space-y-3">
+          {table.map((s, i) => (
+            <form
+              key={s.id}
+              action={updateStanding}
+              className={`grid grid-cols-3 items-end gap-2 rounded-xl border p-3 shadow-sm sm:grid-cols-5 xl:grid-cols-[minmax(0,1fr)_repeat(5,3rem)_auto] ${
+                s.isOurs ? "border-pitch/40 bg-pitch/[0.06]" : "border-ink/10 bg-white/80"
+              }`}
+            >
+              <input type="hidden" name="id" value={s.id} />
+              <input type="hidden" name="tournamentId" value={tournament.id} />
+              <div className="col-span-full flex min-w-0 items-start gap-2 xl:col-span-1 xl:self-center">
+                <span className="shrink-0 text-sm font-semibold text-ink-soft">{i + 1}.</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-snug">{s.teamName}</p>
+                  <p className="mt-0.5 text-xs text-ink-soft">{s.pts} pts</p>
                 </div>
-              </form>
-            ))}
-          </div>
+              </div>
+              <NumCell name="won" value={s.won} label="G" description="Ganados" />
+              <NumCell name="drawn" value={s.drawn} label="E" description="Empatados" />
+              <NumCell name="lost" value={s.lost} label="P" description="Perdidos" />
+              <NumCell name="goalsFor" value={s.goalsFor} label="GF" description="Goles a favor" />
+              <NumCell name="goalsAgainst" value={s.goalsAgainst} label="GC" description="Goles en contra" />
+              <div className="col-span-full flex flex-wrap items-center justify-end gap-2 xl:col-span-1">
+                <button
+                  type="submit"
+                  className="min-h-10 rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk transition hover:bg-pitch-deep"
+                >
+                  Guardar
+                </button>
+                <button
+                  type="submit"
+                  formAction={deleteStanding}
+                  aria-label={`Quitar a ${s.teamName} de la tabla`}
+                  className="min-h-10 rounded-full px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-red-50 hover:text-red-600"
+                >
+                  Quitar
+                </button>
+              </div>
+            </form>
+          ))}
         </div>
       )}
 
@@ -226,37 +215,24 @@ export default async function TorneoDetailPage({
 }
 
 function NumCell({
-  name,
-  value,
-  wide = false,
+  name, value, label, description,
 }: {
   name: string;
   value: number;
-  wide?: boolean;
+  label: string;
+  description: string;
 }) {
   return (
-    <input
-      type="number"
-      min={0}
-      name={name}
-      defaultValue={value}
-      className={`${wide ? "w-12" : "w-10"} rounded-lg border border-ink/15 bg-white px-1 py-1 text-center text-sm text-ink shadow-sm outline-none focus:border-pitch focus:ring-2 focus:ring-pitch/20`}
-    />
-  );
-}
-
-function DeleteStandingButton({ id }: { id: string }) {
-  return (
-    <button
-      type="submit"
-      formAction={deleteStanding}
-      name="id"
-      value={id}
-      aria-label="Eliminar fila"
-      title="Eliminar"
-      className="rounded-full px-2 py-1 text-xs font-medium text-ink-soft transition hover:bg-red-50 hover:text-red-600"
-    >
-      ✕
-    </button>
+    <label className="min-w-0 text-xs font-medium text-ink-soft" title={description}>
+      {label}
+      <input
+        type="number"
+        min={0}
+        name={name}
+        defaultValue={value}
+        aria-label={description}
+        className="mt-1 min-h-10 w-full rounded-lg border border-ink/15 bg-white px-1 text-center text-sm text-ink shadow-sm outline-none focus:border-pitch focus:ring-2 focus:ring-pitch/20"
+      />
+    </label>
   );
 }
