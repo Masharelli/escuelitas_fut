@@ -30,6 +30,10 @@ una escuela no tiene acceso a otras escuelas por ese rol. Desde **Usuarios**
 invita administradores y desde cada equipo invita o retira profesores. Las
 invitaciones duran siete días y se comparten mediante un enlace.
 
+En **Usuarios**, el dueño puede elegir **Dar acceso de administrador** en la
+cuenta de un entrenador. La misma cuenta puede cambiar entre Administración
+y el Portal de entrenador. El dueño puede retirar cada acceso por separado.
+
 **Movimientos** registra operaciones del personal desde su activación; no
 reconstruye movimientos anteriores. Los avisos a tutores son mensajes internos,
 individuales o para todo el equipo, visibles en el portal de padres.

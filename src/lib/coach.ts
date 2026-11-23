@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db";
@@ -33,6 +33,7 @@ export async function getCoachTeams(userId: string, schoolId: string) {
 
 /** Asigna una cuenta que ya es entrenadora de esta escuela a otro equipo. */
 export async function assignExistingCoach(schoolId: string, teamId: string, email: string) {
+  const coachAccess = or(eq(memberships.role, "coach"), and(eq(memberships.role, "admin"), eq(memberships.alsoCoach, true)));
   const assigned = await db.insert(coachTeams).select(
     db.select({
       id: sql<string>`gen_random_uuid()::text`.as("id"),
@@ -43,14 +44,16 @@ export async function assignExistingCoach(schoolId: string, teamId: string, emai
     }).from(teams)
       .innerJoin(memberships, and(
         eq(memberships.schoolId, teams.schoolId),
-        eq(memberships.role, "coach"),
+        coachAccess,
       ))
       .innerJoin(users, eq(users.id, memberships.userId))
-      .where(and(eq(teams.id, teamId), eq(teams.schoolId, schoolId), sql`lower(${users.email}) = ${email}`)),
+      .where(and(eq(teams.id, teamId), eq(teams.schoolId, schoolId), sql`lower(${users.email}) = ${email}`))
+      .for("update", { of: memberships }),
   ).onConflictDoNothing().returning({ id: coachTeams.id });
   if (assigned.length) return true;
   const existing = await db.select({ id: coachTeams.id }).from(coachTeams)
     .innerJoin(users, eq(users.id, coachTeams.userId))
+    .innerJoin(memberships, and(eq(memberships.schoolId, coachTeams.schoolId), eq(memberships.userId, coachTeams.userId), coachAccess))
     .where(and(eq(coachTeams.schoolId, schoolId), eq(coachTeams.teamId, teamId), sql`lower(${users.email}) = ${email}`));
   return existing.length > 0;
 }

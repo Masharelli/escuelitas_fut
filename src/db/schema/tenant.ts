@@ -100,6 +100,7 @@ export const memberships = pgTable(
       .notNull()
       .references(() => schools.id, { onDelete: "cascade" }),
     role: membershipRole("role").notNull().default("parent"),
+    alsoCoach: boolean("also_coach").notNull().default(false),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   },
   (m) => [uniqueIndex("memberships_user_school_uq").on(m.userId, m.schoolId)]

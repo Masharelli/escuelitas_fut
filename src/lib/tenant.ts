@@ -14,6 +14,10 @@ export const OWNER_ROLES: Role[] = ["owner"];
 /** Roles con acceso al portal de administración. */
 export const ADMIN_ROLES: Role[] = ["owner", "admin"];
 
+export function hasCoachAccess(membership: { role: Role; alsoCoach: boolean }) {
+  return membership.role === "coach" || (membership.role === "admin" && membership.alsoCoach);
+}
+
 /**
  * Roles "staff": pueden operar partidos/sesiones/convocatorias. Incluye al
  * entrenador, que además queda acotado a sus equipos (ver `assertTeamAccess`
@@ -102,9 +106,13 @@ export async function requireRole(allowed: Role[]) {
     redirect("/onboarding");
   }
 
-  const candidates: Membership[] = mine.filter((m) =>
-    allowed.includes(m.role as Role)
-  );
+  const candidates: Membership[] = [];
+  for (const member of mine) {
+    if (allowed.includes(member.role)) candidates.push(member);
+    else if (allowed.includes("coach") && hasCoachAccess(member)) {
+      candidates.push({ ...member, role: "coach" });
+    }
+  }
   if (candidates.length === 0) {
     redirect("/");
   }

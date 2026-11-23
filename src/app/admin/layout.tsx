@@ -1,4 +1,4 @@
-import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
+import { requireRole, ADMIN_ROLES, hasCoachAccess } from "@/lib/tenant";
 import { getUnreadCount } from "@/lib/notifications";
 import { orgVocab } from "@/lib/org";
 import { PortalShell, type NavItem } from "@/components/portal-shell";
@@ -47,13 +47,17 @@ export default async function AdminLayout({
   const { session, membership, candidates } = await requireRole(ADMIN_ROLES);
   const unread = await getUnreadCount(session.user.id);
   const vocab = orgVocab(membership.school.kind);
+  const nav = buildNav(membership.school.kind, vocab.settingsLabel, membership.role);
+  if (hasCoachAccess(membership)) {
+    nav.push({ href: "/coach", label: "Portal de entrenador", icon: "teams" });
+  }
 
   return (
     <PortalShell
       schoolName={membership.school.name}
       portalLabel={vocab.portalLabel}
       userName={session.user.name}
-      nav={buildNav(membership.school.kind, vocab.settingsLabel, membership.role)}
+      nav={nav}
       schools={candidates.map((m) => ({ id: m.schoolId, name: m.school.name }))}
       activeSchoolId={membership.schoolId}
       notifications={{ href: "/admin/avisos", unread }}

@@ -2,11 +2,11 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import { coachTeams, memberships, staffInvitations, teams } from "@/db/schema";
-import { requireRole, OWNER_ROLES } from "@/lib/tenant";
+import { hasCoachAccess, requireRole, OWNER_ROLES } from "@/lib/tenant";
 import { isPendingInvitation } from "@/lib/invitation-validity";
 import { PageHeader, Card } from "@/components/ui";
 import { StaffInviteForm } from "./invite-form";
-import { removeStaffAccess, revokeUserInvitation } from "./actions";
+import { grantStaffAdministration, removeStaffAccess, revokeUserInvitation } from "./actions";
 
 export default async function UsuariosPage() {
   const { membership } = await requireRole(OWNER_ROLES);
@@ -36,17 +36,32 @@ export default async function UsuariosPage() {
         <ul className="space-y-3">
           {staff.map((person) => {
             const teamNames = assignments.filter((assignment) => assignment.userId === person.userId).map((assignment) => assignment.team.name);
+            const coaches = hasCoachAccess(person);
+            const bothRoles = person.role === "admin" && coaches;
             return (
               <li key={person.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-ink/10 bg-white p-4">
                 <div>
                   <p className="font-semibold">{person.user.name ?? (person.role === "coach" ? "Entrenador" : "Administrador")}</p>
                   <p className="text-sm text-ink-soft">{person.user.email}</p>
-                  <p className="text-sm text-ink-soft">{person.role === "coach" ? `Entrenador · ${teamNames.join(", ") || "Sin equipo asignado"}` : "Administrador"}</p>
+                  {person.role === "admin" && <p className="text-sm text-ink-soft">Administrador</p>}
+                  {coaches && <p className="text-sm text-ink-soft">Entrenador · {teamNames.join(", ") || "Sin equipo asignado"}</p>}
                 </div>
-                <form action={removeStaffAccess}>
-                  <input type="hidden" name="id" value={person.id} />
-                  <button aria-label={`Retirar acceso de ${person.user.email}`} className="rounded-full border border-ink/15 px-4 py-2 text-sm text-red-700">Retirar acceso</button>
-                </form>
+                <div className="flex flex-wrap gap-2">
+                  {person.role === "coach" && (
+                    <form action={grantStaffAdministration}>
+                      <input type="hidden" name="id" value={person.id} />
+                      <button className="rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk">
+                        Dar acceso de administrador
+                      </button>
+                    </form>
+                  )}
+                  {bothRoles ? (
+                    <>
+                      <RemoveAccess id={person.id} email={person.user.email} role="admin" label="Retirar administración" />
+                      <RemoveAccess id={person.id} email={person.user.email} role="coach" label="Retirar entrenamiento" />
+                    </>
+                  ) : <RemoveAccess id={person.id} email={person.user.email} label="Retirar acceso" />}
+                </div>
               </li>
             );
           })}
@@ -73,5 +88,22 @@ export default async function UsuariosPage() {
         ))}
       </ul>
     </div>
+  );
+}
+
+function RemoveAccess({ id, email, role, label }: {
+  id: string;
+  email: string;
+  role?: "admin" | "coach";
+  label: string;
+}) {
+  return (
+    <form action={removeStaffAccess}>
+      <input type="hidden" name="id" value={id} />
+      {role && <input type="hidden" name="role" value={role} />}
+      <button aria-label={`${label} de ${email}`} className="rounded-full border border-ink/15 px-4 py-2 text-sm text-red-700">
+        {label}
+      </button>
+    </form>
   );
 }

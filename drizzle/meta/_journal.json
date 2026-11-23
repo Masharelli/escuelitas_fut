@@ -183,6 +183,13 @@
       "when": 1795465981411,
       "tag": "0025_academy_recurring_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795470292237,
+      "tag": "0026_staff_dual_access",
+      "breakpoints": true
     }
   ]
 }

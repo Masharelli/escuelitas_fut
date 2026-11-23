@@ -40,18 +40,45 @@ export async function revokeUserInvitation(formData: FormData) {
     revalidatePath("/admin/equipos/[teamId]", "page");
   });
 }
+
+export async function grantStaffAdministration(formData: FormData) {
+  const { membership, session } = await requireRole(OWNER_ROLES);
+  return recordActivity(membership, session.user.name, "Otorgar administración a entrenador", formData, async () => {
+    await db.update(memberships).set({ role: "admin", alsoCoach: true }).where(and(
+      eq(memberships.id, String(formData.get("id") ?? "")),
+      eq(memberships.schoolId, membership.schoolId),
+      eq(memberships.role, "coach"),
+    ));
+    revalidatePath("/admin/usuarios");
+    revalidatePath("/coach", "layout");
+  });
+}
+
 export async function removeStaffAccess(formData: FormData) {
   const { membership, session } = await requireRole(OWNER_ROLES);
-  return recordActivity(membership, session.user.name, "Retirar acceso de personal", formData, async () => {
+  const requested = formData.get("role");
+  if (requested !== null && requested !== "admin" && requested !== "coach") return;
+  const action = requested === "admin" ? "Retirar administración"
+    : requested === "coach" ? "Retirar acceso de entrenador" : "Retirar acceso de personal";
+  return recordActivity(membership, session.user.name, action, formData, async () => {
     await db.transaction(async (tx) => {
-      const [removed] = await tx.delete(memberships).where(and(
+      const scope = and(
         eq(memberships.id, String(formData.get("id") ?? "")),
         eq(memberships.schoolId, membership.schoolId),
-        inArray(memberships.role, ["admin", "coach"])
-      )).returning({ userId: memberships.userId });
-      if (removed) {
-        await tx.delete(coachTeams).where(and(eq(coachTeams.userId, removed.userId), eq(coachTeams.schoolId, membership.schoolId)));
+        inArray(memberships.role, ["admin", "coach"]),
+      );
+      const [staff] = await tx.select().from(memberships).where(scope).for("update");
+      if (!staff) return;
+      if (staff.role === "admin" && staff.alsoCoach && requested === "admin") {
+        await tx.update(memberships).set({ role: "coach", alsoCoach: false }).where(scope);
+        return;
       }
+      if (staff.role === "admin" && staff.alsoCoach && requested === "coach") {
+        await tx.update(memberships).set({ alsoCoach: false }).where(scope);
+      } else if (!requested || staff.role === requested) {
+        await tx.delete(memberships).where(scope);
+      } else return;
+      await tx.delete(coachTeams).where(and(eq(coachTeams.userId, staff.userId), eq(coachTeams.schoolId, membership.schoolId)));
     });
     revalidatePath("/admin/usuarios");
     revalidatePath("/admin/equipos/[teamId]", "page");

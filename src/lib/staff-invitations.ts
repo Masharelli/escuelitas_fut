@@ -64,7 +64,7 @@ export async function getTeamStaffInvitations(teamId: string) {
 }
 
 /**
- * Vincula al usuario como entrenador de la escuela y lo asigna al equipo de la
+ * Otorga acceso a la escuela y, para entrenadores, asigna el equipo de la
  * invitación. Idempotente. Devuelve el schoolId para redirigir.
  */
 export async function acceptStaffInvitation(token: string, userId: string) {
@@ -93,8 +93,13 @@ export async function acceptStaffInvitation(token: string, userId: string) {
     await tx.insert(memberships).values({ userId, schoolId: inv.schoolId, role: inv.role })
       .onConflictDoUpdate({
         target: [memberships.userId, memberships.schoolId],
-        set: { role: inv.role },
-        setWhere: inArray(memberships.role, inv.role === "admin" ? ["parent", "coach"] : ["parent"]),
+        set: inv.role === "admin"
+          ? { role: "admin", alsoCoach: sql`${memberships.role} = 'coach'` }
+          : {
+            role: sql`case when ${memberships.role} = 'admin' then ${memberships.role} else 'coach' end`,
+            alsoCoach: sql`${memberships.role} = 'admin'`,
+          },
+        setWhere: inArray(memberships.role, inv.role === "admin" ? ["parent", "coach"] : ["parent", "admin"]),
       });
     if (inv.teamId) {
       await tx.insert(coachTeams).values({ schoolId: inv.schoolId, userId, teamId: inv.teamId }).onConflictDoNothing();
