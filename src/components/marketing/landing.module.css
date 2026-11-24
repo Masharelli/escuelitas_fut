@@ -1,0 +1,108 @@
+.glass {
+  background: rgb(13 39 26 / 88%);
+}
+
+.floating {
+  background: rgb(16 44 30 / 92%);
+  box-shadow: 0 8px 24px rgb(6 26 17 / 17%);
+  transition: background-color 180ms ease;
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .glass {
+    background: rgb(15 45 30 / 65%);
+    backdrop-filter: blur(14px);
+  }
+
+  .floating {
+    background: rgb(16 45 30 / 71%);
+    backdrop-filter: blur(12px);
+  }
+}
+
+a.floating:hover {
+  background: rgb(16 45 30 / 89%);
+}
+
+.photo {
+  position: relative;
+  aspect-ratio: 7 / 5;
+}
+
+@keyframes copy-in {
+  from {
+    opacity: 0.25;
+    transform: translateX(-1.75rem);
+  }
+}
+
+@keyframes photo-in {
+  from {
+    opacity: 0.65;
+    transform: translateX(0.75rem) scale(1.05);
+  }
+}
+
+@keyframes links-in {
+  from {
+    opacity: 0.45;
+    transform: translateY(0.65rem);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .copy > * {
+    animation: copy-in 650ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .copy > :nth-child(2) {
+    animation-delay: 70ms;
+  }
+
+  .copy > :nth-child(3) {
+    animation-delay: 150ms;
+  }
+
+  .copy > :nth-child(4) {
+    animation-delay: 220ms;
+  }
+
+  .copy:focus-within > * {
+    animation: none;
+  }
+
+  .photo img {
+    animation: photo-in 850ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .floatIn {
+    animation: links-in 550ms 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .floatIn:focus-within {
+    animation: none;
+  }
+}
+
+.photo::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--color-pitch-deep), transparent 34%, rgb(16 36 26 / 16%));
+  pointer-events: none;
+  content: "";
+}
+
+@media (width >= 64rem) {
+  .photo {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 76%;
+    aspect-ratio: auto;
+  }
+
+  .photo::after {
+    background:
+      linear-gradient(90deg, var(--color-pitch-deep) 0%, rgb(24 77 51 / 91%) 16%, rgb(24 77 51 / 40%) 39%, transparent 62%),
+      linear-gradient(0deg, rgb(16 36 26 / 28%), transparent 64%);
+  }
+}

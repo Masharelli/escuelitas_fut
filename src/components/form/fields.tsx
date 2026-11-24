@@ -2,9 +2,6 @@ import { TextField } from "@/components/text-field";
 
 export { TextField };
 
-const inputClass =
-  "w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-ink shadow-sm outline-none transition placeholder:text-ink-soft/50 focus:border-pitch focus:ring-2 focus:ring-pitch/20";
-
 function FieldShell({
   label,
   hint,
@@ -16,7 +13,7 @@ function FieldShell({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-1.5 block text-sm font-medium text-ink">{label}</span>
+      <span className="mb-2 block text-sm font-semibold text-ink">{label}</span>
       {children}
       {hint && <span className="mt-1.5 block text-xs text-ink-soft">{hint}</span>}
     </label>
@@ -46,7 +43,7 @@ export function SelectField({
         name={name}
         defaultValue={defaultValue ?? ""}
         required={required}
-        className={inputClass}
+        className="md-field"
       >
         <option value="" disabled={required}>
           {placeholder}
@@ -83,7 +80,7 @@ export function TextareaField({
         defaultValue={defaultValue}
         placeholder={placeholder}
         rows={rows}
-        className={`${inputClass} resize-y`}
+        className="md-field resize-y"
       />
     </FieldShell>
   );
@@ -106,7 +103,7 @@ export function FileField({
         type="file"
         name={name}
         accept={accept}
-        className="block w-full text-sm text-ink-soft file:mr-3 file:rounded-lg file:border-0 file:bg-pitch/10 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-pitch hover:file:bg-pitch/15"
+        className="block w-full rounded-lg text-sm text-ink-soft outline-offset-2 focus-visible:outline-2 focus-visible:outline-pitch file:mr-3 file:min-h-12 file:rounded-full file:border-0 file:bg-primary-container file:px-4 file:py-2 file:text-sm file:font-semibold file:text-on-primary-container hover:file:bg-chalk-deep"
       />
     </FieldShell>
   );

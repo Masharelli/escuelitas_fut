@@ -35,11 +35,11 @@ export function AuthShell({
     <main className="relative flex w-full min-w-0 flex-1 flex-col overflow-hidden bg-chalk text-ink">
       <PitchBackdrop />
 
-      <header className="relative z-10 px-6 py-6 sm:px-10">
+      <header className="relative z-10 px-4 py-3 sm:px-8 sm:py-5">
         {topLeft ?? (
           <Link
             href={backHref}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-chalk-deep hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
+            className="md-button bg-surface px-4 text-ink-soft hover:bg-chalk-deep hover:text-ink"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
@@ -56,7 +56,7 @@ export function AuthShell({
       </header>
 
       <section className="relative z-10 flex w-full min-w-0 flex-1 flex-col items-center justify-center px-4 pb-12 sm:px-6 sm:pb-16">
-        <div className="rise flex w-full max-w-md flex-col items-center">
+        <div className="rise flex w-full max-w-lg flex-col items-center">
           {brand ? (
             <div className="flex flex-col items-center gap-2.5">
               <SchoolCrest name={brand.name} logoUrl={brand.logoUrl} size={64} />
@@ -68,12 +68,12 @@ export function AuthShell({
             <Wordmark size="lg" />
           )}
 
-          <div className="mt-6 w-full rounded-2xl border border-ink/10 bg-white/85 p-5 shadow-sm backdrop-blur sm:mt-8 sm:p-8">
-            <h1 className="font-display text-2xl font-extrabold tracking-tight">
+          <div className="mt-5 w-full rounded-[1.75rem] border border-outline-variant bg-surface p-5 sm:mt-7 sm:rounded-[2rem] sm:p-8">
+            <h1 className="font-display text-3xl font-extrabold leading-tight tracking-tight">
               {title}
             </h1>
             {subtitle && (
-              <p className="mt-1.5 text-sm text-ink-soft">{subtitle}</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink-soft">{subtitle}</p>
             )}
             <div className="mt-6">{children}</div>
           </div>

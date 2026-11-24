@@ -1,14 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  /* Paleta "Día de partido": pasto, cal y un acento mandarina (el balón). */
-  --color-chalk: #f4f6f1;
-  --color-chalk-deep: #e8ede2;
-  --color-pitch: #0e6e37;
-  --color-pitch-deep: #0a5128;
-  --color-ink: #0b1a10;
-  --color-ink-soft: #46584c;
+  --color-chalk: #f8faf5;
+  --color-chalk-deep: #e6eee2;
+  --color-pitch: #216142;
+  --color-pitch-deep: #184d33;
+  --color-ink: #17251d;
+  --color-ink-soft: #4b5b50;
   --color-tangerine: #ff6a2b;
+  --color-surface: #fcfef9;
+  --color-surface-container: #eef3ea;
+  --color-outline: #78877b;
+  --color-outline-variant: #d5dfd2;
+  --color-primary-container: #d5eccf;
+  --color-on-primary-container: #183d29;
+  --color-tertiary-container: #f8e8cb;
+  --color-on-tertiary-container: #59401f;
 
   --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -26,6 +33,11 @@ body {
 }
 
 @layer base {
+  :where(a, button, summary):focus-visible {
+    outline: 2px solid var(--color-pitch);
+    outline-offset: 3px;
+  }
+
   input:not([type="checkbox"], [type="radio"]),
   select,
   textarea {
@@ -34,9 +46,62 @@ body {
   }
 }
 
+@layer components {
+  .md-button {
+    @apply inline-flex min-h-12 max-w-full items-center justify-center gap-2 rounded-full px-5 py-2.5 text-center text-sm font-semibold leading-snug transition-colors disabled:cursor-not-allowed disabled:opacity-60 [&>svg]:shrink-0;
+  }
+
+  .md-filled {
+    @apply bg-pitch text-white hover:bg-pitch-deep;
+  }
+
+  .md-outlined {
+    @apply border border-outline text-pitch hover:bg-surface-container;
+  }
+
+  .md-tonal {
+    @apply bg-primary-container text-on-primary-container hover:bg-chalk-deep;
+  }
+
+  .md-field {
+    @apply min-h-13 w-full rounded-lg border border-outline bg-surface px-3.5 py-2.5 text-base text-ink outline-none transition placeholder:text-ink-soft focus:border-pitch focus:ring-1 focus:ring-pitch;
+  }
+
+  .md-icon-button {
+    @apply inline-flex size-12 shrink-0 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-chalk-deep hover:text-ink;
+  }
+
+  .pitch-panel {
+    @apply relative isolate overflow-hidden;
+  }
+
+  .pitch-panel::before {
+    position: absolute;
+    z-index: -1;
+    inset-block: -52%;
+    inset-inline-end: -4rem;
+    width: clamp(11rem, 32vw, 27rem);
+    transform: rotate(-22deg);
+    border: 1px solid currentColor;
+    background:
+      radial-gradient(circle at center, transparent 3.25rem, currentColor 3.25rem 3.31rem, transparent 3.37rem),
+      linear-gradient(transparent calc(50% - 0.5px), currentColor calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+      repeating-linear-gradient(0deg, transparent 0 3.5rem, color-mix(in srgb, currentColor 30%, transparent) 3.5rem 7rem);
+    opacity: 0.12;
+    pointer-events: none;
+    content: "";
+  }
+}
+
 @media (width < 64rem) {
-  body:has([data-mobile-menu-open]) {
+  body:has(#portal-menu[open]) {
     overflow: hidden;
+  }
+}
+
+@media (width < 40rem) {
+  html:has([data-bottom-nav]) {
+    scroll-padding-bottom: calc(5rem + env(safe-area-inset-bottom));
   }
 }
 
@@ -56,26 +121,8 @@ body {
   animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-/* Punto "en vivo" del eyebrow, como un marcador de partido en curso. */
-@keyframes livepulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scale(0.7);
-  }
-}
-
-.live-dot {
-  animation: livepulse 1.8s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .rise,
-  .live-dot {
+  .rise {
     animation: none;
   }
 }

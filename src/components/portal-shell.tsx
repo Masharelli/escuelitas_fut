@@ -15,6 +15,7 @@ export function PortalShell({
   portalLabel,
   userName,
   nav,
+  bottomNav,
   schools,
   activeSchoolId,
   notifications,
@@ -24,6 +25,7 @@ export function PortalShell({
   portalLabel: string;
   userName?: string | null;
   nav: NavItem[];
+  bottomNav?: NavItem[];
   /** Escuelas entre las que puede cambiar el usuario en este portal. */
   schools?: SwitchableSchool[];
   activeSchoolId?: string;
@@ -33,36 +35,31 @@ export function PortalShell({
 }) {
   const canSwitch = !!schools && schools.length > 1 && !!activeSchoolId;
   return (
-    <div className="flex w-full min-w-0 flex-1 bg-chalk text-ink">
+    <div className="flex w-full min-w-0 flex-1 bg-chalk text-ink" data-bottom-nav={bottomNav ? "" : undefined}>
       {/* Menú lateral (escritorio) */}
-      <aside className="sticky top-0 hidden h-dvh shrink-0 flex-col self-start border-r border-ink/10 bg-white/70 px-4 py-5 lg:flex lg:w-56 xl:w-64">
-        <div className="px-2">
+      <aside className="sticky top-0 hidden h-dvh shrink-0 flex-col self-start border-r border-outline-variant bg-surface-container p-4 lg:flex lg:w-60 xl:w-66">
+        <div className="flex shrink-0 items-center justify-between gap-1 px-1">
           <Wordmark size="md" />
+          {notifications && <NotificationBell href={notifications.href} unread={notifications.unread} />}
         </div>
 
-        <div className="mt-6 flex items-center gap-3 rounded-xl bg-chalk-deep/70 px-3 py-2.5">
+        <div className="mt-4 flex shrink-0 items-center gap-3 rounded-2xl bg-surface px-3 py-3">
           <SchoolAvatar name={schoolName} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-ink">{schoolName}</p>
-            <p className="text-xs font-medium text-pitch">{portalLabel}</p>
+            <p className="line-clamp-2 text-sm leading-tight font-semibold text-ink" title={schoolName}>{schoolName}</p>
+            <p className="mt-0.5 text-xs font-medium text-ink-soft">{portalLabel}</p>
           </div>
-          {notifications && (
-            <NotificationBell
-              href={notifications.href}
-              unread={notifications.unread}
-            />
-          )}
         </div>
 
         {canSwitch && (
           <SchoolSwitcher schools={schools} activeId={activeSchoolId} />
         )}
 
-        <div className="mt-5 min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
+        <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain py-1">
           <PortalNav items={nav} />
         </div>
 
-        <div className="mt-6 flex items-center justify-between gap-2 border-t border-ink/10 pt-4">
+        <div className="mt-3 flex shrink-0 items-center justify-between gap-2 border-t border-outline-variant pl-2 pt-2">
           <div className="flex min-w-0 items-center gap-2">
             <UserAvatar name={userName} />
             <span className="truncate text-sm text-ink-soft">
@@ -86,7 +83,10 @@ export function PortalShell({
           notifications={notifications}
         />
 
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 xl:px-8">{children}</main>
+        <main className={`min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 xl:px-8 ${bottomNav ? "pb-[calc(6rem+env(safe-area-inset-bottom))]" : ""}`}>
+          {children}
+        </main>
+        {bottomNav && <PortalNav items={bottomNav} bottom />}
       </div>
     </div>
   );
@@ -94,7 +94,7 @@ export function PortalShell({
 
 function SchoolAvatar({ name }: { name: string }) {
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pitch font-display text-base font-extrabold text-chalk">
+    <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-container font-display text-lg font-extrabold text-on-primary-container">
       {initial(name)}
     </span>
   );
@@ -102,7 +102,7 @@ function SchoolAvatar({ name }: { name: string }) {
 
 function UserAvatar({ name }: { name?: string | null }) {
   return (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink/10 text-xs font-semibold text-ink">
+    <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-full bg-chalk-deep text-xs font-semibold text-ink">
       {initial(name ?? "?")}
     </span>
   );

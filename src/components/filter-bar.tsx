@@ -57,8 +57,7 @@ export function FilterBar({
     router.replace(qs ? `${pathname}?${qs}` : pathname);
   };
 
-  const fieldClass =
-    "min-h-11 w-full min-w-0 rounded-xl border border-ink/15 bg-white px-3 py-2.5 text-sm text-ink shadow-sm outline-none focus:border-pitch focus:ring-2 focus:ring-pitch/20 sm:w-auto sm:flex-[1_1_11rem]";
+  const fieldClass = "md-field sm:w-auto sm:flex-[1_1_11rem] sm:text-sm";
 
   return (
     <div className="mb-5 flex min-w-0 flex-wrap items-center gap-2">
@@ -77,7 +76,7 @@ export function FilterBar({
             onChange={(e) => onSearch(e.target.value)}
             placeholder={search.placeholder}
             aria-label={search.placeholder}
-            className="min-h-11 w-full rounded-xl border border-ink/15 bg-white py-2.5 pl-10 pr-3 text-sm text-ink shadow-sm outline-none placeholder:text-ink-soft/60 focus:border-pitch focus:ring-2 focus:ring-pitch/20"
+            className="md-field pl-10 sm:text-sm"
           />
         </div>
       )}
@@ -108,7 +107,7 @@ export function FilterBar({
         <button
           type="button"
           onClick={clear}
-          className="min-h-11 shrink-0 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-soft transition hover:bg-chalk-deep hover:text-ink"
+          className="md-button md-tonal"
         >
           Limpiar
         </button>

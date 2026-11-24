@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@auth/drizzle-adapter": "1.11.3",
+    "@remotion/player": "4.0.534",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
     "next": "16.3.8",
@@ -23,6 +24,7 @@
     "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "remotion": "4.0.534",
     "stripe": "^22.2.3",
     "zod": "^4.4.3"
   },

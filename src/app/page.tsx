@@ -1,11 +1,15 @@
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { getMyMemberships, ADMIN_ROLES, type Role } from "@/lib/tenant";
 import { claimStudentsByEmail } from "@/lib/guardians";
-import { Wordmark } from "@/components/brand/wordmark";
-import { PitchBackdrop } from "@/components/brand/pitch-backdrop";
+import { PublicHeader } from "@/components/brand/public-header";
+import { FeatureOverview } from "@/components/marketing/feature-overview";
+import { HeroLinks } from "@/components/marketing/hero-links";
+import trainingPhoto from "../../public/entrenamiento-infantil.webp";
+import styles from "@/components/marketing/landing.module.css";
 
 export default async function HomePage() {
   const session = await auth();
@@ -25,164 +29,54 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="relative flex w-full min-w-0 flex-1 flex-col overflow-hidden bg-chalk text-ink">
-      <PitchBackdrop />
-
-      <header className="relative z-10 flex items-center justify-between px-6 py-6 sm:px-10">
-        <Wordmark />
-        <Link
-          href="/login"
-          className="rounded-full px-4 py-2 text-sm font-medium text-ink-soft transition hover:bg-chalk-deep hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
-        >
-          Iniciar sesión
-        </Link>
-      </header>
-
-      <section className="relative z-10 flex w-full min-w-0 flex-1 flex-col items-center justify-center px-6 pb-20 text-center">
-        <p className="rise max-w-full text-center text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-ink-soft sm:text-xs sm:tracking-[0.18em]">
-          <span className="relative mr-2 inline-flex h-2 w-2 align-middle">
-            <span className="live-dot absolute inline-flex h-full w-full rounded-full bg-tangerine" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-tangerine" />
-          </span>
-          Plataforma para escuelas de futbol
-        </p>
-
-        <h1 className="rise mt-6 w-full max-w-4xl text-balance font-display text-[clamp(2rem,7vw,4.5rem)] font-extrabold leading-[1.14] tracking-tight">
-          Administra tu escuela de{" "}
-          <span className="relative whitespace-nowrap text-pitch">
-            futbol
-            <ChalkUnderline />
-          </span>{" "}
-          en un solo lugar
-        </h1>
-
-        <p className="rise mt-6 w-full max-w-xl text-balance text-lg leading-relaxed text-ink-soft">
-          Alumnos, pagos, partidos y torneos en un mismo tablero. Y los papás
-          reciben cada resultado en su celular, en cuanto suena el silbatazo
-          final.
-        </p>
-
-        <div className="rise mt-9 flex flex-col items-center gap-3 sm:flex-row">
-          <Link
-            href="/registro"
-            className="group inline-flex items-center gap-2 rounded-full bg-pitch px-7 py-3.5 text-base font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
-          >
-            Empezar gratis
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              className="transition-transform group-hover:translate-x-0.5"
-              aria-hidden="true"
-            >
-              <path
-                d="M5 12h14M13 6l6 6-6 6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+    <main className="flex w-full min-w-0 flex-1 flex-col">
+      <section aria-labelledby="portada-titulo" className="mx-auto w-full max-w-[92rem] px-4 pt-4 sm:px-8 sm:pt-5">
+        <div className="relative isolate overflow-hidden rounded-[1.75rem] bg-pitch-deep text-white sm:rounded-[2rem]">
+          <PublicHeader />
+          <div className="lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+            <div className={`${styles.copy} relative z-10 min-w-0 px-5 pt-5 pb-4 sm:px-9 sm:pt-7 lg:col-start-1 lg:row-start-1 lg:pt-9 lg:pb-6 xl:pl-15`}>
+              <p className="text-sm font-semibold text-primary-container sm:text-base">Plataforma para escuelas de futbol</p>
+              <h1 id="portada-titulo" className="mt-4 max-w-[15ch] font-display text-[clamp(2.45rem,6.1vw,5.75rem)] leading-[0.98] font-extrabold tracking-[-0.046em]">
+                Tu escuela <span className="block">de futbol,</span>{" "}
+                <span className="block text-primary-container">en orden.</span>
+              </h1>
+              <p className="mt-4 max-w-sm text-base leading-relaxed text-chalk sm:mt-6 sm:text-lg">
+                Inscribe alumnos, organiza equipos y lleva el control de las mensualidades. Las familias siguen los partidos y pagos de sus hijos desde su portal.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-x-3 gap-y-2 sm:mt-8">
+                <Link href="/registro" className="md-button bg-primary-container px-4 text-on-primary-container hover:bg-white focus-visible:outline-primary-container sm:px-5">
+                  Crear cuenta <span aria-hidden="true">→</span>
+                </Link>
+                <a href="#funciones" className="md-button border border-white/50 bg-white/5 px-4 text-white hover:bg-white/15 focus-visible:outline-primary-container sm:px-5">
+                  Ver qué incluye <span aria-hidden="true">↓</span>
+                </a>
+              </div>
+            </div>
+            <div className={styles.photo}>
+              <Image
+                src={trainingPhoto}
+                alt="Un entrenador platica con su equipo infantil sentado en la cancha"
+                fill
+                preload
+                sizes="(min-width: 1472px) 1070px, (min-width: 1024px) 76vw, (min-width: 640px) calc(100vw - 64px), calc(100vw - 32px)"
+                className="object-cover object-[55%_52%]"
               />
-            </svg>
-          </Link>
-          <Link
-            href="/login"
-            className="inline-flex items-center rounded-full border border-ink/15 bg-chalk px-7 py-3.5 text-base font-semibold text-ink transition hover:border-ink/30 hover:bg-chalk-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
-          >
-            Iniciar sesión
-          </Link>
+            </div>
+            <HeroLinks />
+          </div>
         </div>
-
-        <ul className="rise mt-14 flex flex-wrap items-center justify-center gap-3">
-          <FeatureChip icon={<RosterIcon />} label="Control de alumnos" />
-          <FeatureChip icon={<PaymentIcon />} label="Pagos en línea" />
-          <FeatureChip icon={<WhistleIcon />} label="Resultados al instante" />
-        </ul>
+        <p className="mt-2 text-right text-xs text-ink-soft">
+          Foto de{" "}
+          <a
+            href="https://www.pexels.com/photo/a-coach-teaching-children-at-a-soccer-field-8941567/"
+            className="rounded-sm underline decoration-outline underline-offset-3 hover:text-pitch"
+          >
+            Kampus Production
+          </a>
+        </p>
       </section>
+
+      <FeatureOverview />
     </main>
-  );
-}
-
-function ChalkUnderline() {
-  return (
-    <svg
-      className="absolute -bottom-[0.06em] left-0 h-[0.32em] w-full text-tangerine"
-      viewBox="0 0 200 16"
-      fill="none"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M3 11C40 5 90 4 130 7c25 2 45 4 67 2"
-        stroke="currentColor"
-        strokeWidth="4.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-/* ── Chips de beneficios (la "alineación" de lo que incluye) ─────────────── */
-
-function FeatureChip({
-  icon,
-  label,
-}: {
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <li className="flex items-center gap-2 rounded-full border border-ink/10 bg-chalk/80 px-4 py-2 text-sm font-medium text-ink shadow-sm backdrop-blur">
-      <span className="text-pitch">{icon}</span>
-      {label}
-    </li>
-  );
-}
-
-function RosterIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M16 5.5a3 3 0 0 1 0 5.8M17.5 19c0-2.2-1-3.8-2.5-4.7"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function PaymentIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect
-        x="3"
-        y="6"
-        width="18"
-        height="12"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path d="M3 10h18" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M7 14.5h3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function WhistleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path
-        d="M11 9h9a1 1 0 0 1 1 1 6 6 0 1 1-9.5-4.9"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M11 5.5V9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="9" cy="14" r="1.4" fill="currentColor" />
-    </svg>
   );
 }

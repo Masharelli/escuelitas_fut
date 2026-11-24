@@ -8,7 +8,7 @@ export function SubmitButton({ children, inline = false }: { children: React.Rea
     <button
       type="submit"
       disabled={pending}
-      className={`inline-flex min-h-11 max-w-full items-center justify-center gap-2 rounded-full bg-pitch px-5 py-2.5 text-center font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch disabled:cursor-not-allowed disabled:opacity-60 ${inline ? "text-sm" : "w-full"}`}
+      className={`md-button md-filled ${inline ? "" : "w-full"}`}
     >
       {pending && (
         <svg

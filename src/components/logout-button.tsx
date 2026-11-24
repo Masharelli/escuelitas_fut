@@ -9,7 +9,7 @@ export function LogoutButton({ compact = false }: { compact?: boolean }) {
       onClick={() => signOut({ redirectTo: "/login" })}
       title="Cerrar sesión"
       aria-label="Cerrar sesión"
-      className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium text-ink-soft transition hover:bg-chalk-deep hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
+      className={compact ? "md-icon-button" : "md-button text-ink-soft hover:bg-chalk-deep hover:text-ink"}
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path

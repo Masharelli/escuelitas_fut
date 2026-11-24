@@ -18,11 +18,11 @@ export function ChildrenGrid({ kids }: { kids: Child[] }) {
         <Link
           key={c.id}
           href={`/padres/hijos/${c.id}`}
-          className="flex items-center gap-4 rounded-2xl border border-ink/10 bg-white/80 p-4 shadow-sm transition hover:border-pitch/30 hover:shadow"
+          className="flex min-w-0 items-center gap-4 rounded-3xl border border-outline-variant bg-surface p-4 transition-colors hover:bg-surface-container sm:p-5"
         >
           <Avatar name={c.firstName} photoUrl={c.photoUrl} />
           <div className="min-w-0 flex-1">
-            <p className="font-semibold leading-snug text-ink">
+            <p className="font-display text-lg font-bold leading-snug text-ink">
               {c.firstName} {c.lastName}
             </p>
             {c.tenant && (
@@ -50,7 +50,7 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
     return (
       <Image
         src={photoUrl}
-        alt={name}
+        alt=""
         width={52}
         height={52}
         unoptimized
@@ -59,7 +59,7 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
     );
   }
   return (
-    <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-pitch/10 text-lg font-semibold text-pitch">
+    <span aria-hidden="true" className="flex size-13 shrink-0 items-center justify-center rounded-full bg-primary-container text-lg font-semibold text-on-primary-container">
       {name.trim().charAt(0).toUpperCase() || "?"}
     </span>
   );
@@ -67,7 +67,7 @@ function Avatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full bg-chalk-deep px-2.5 py-0.5 text-xs font-medium text-ink-soft">
+    <span className="rounded-lg bg-surface-container px-2.5 py-1 text-xs font-medium text-ink-soft">
       {children}
     </span>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { usePathname } from "next/navigation";
 
 import { switchSchool } from "./actions";
@@ -19,20 +20,21 @@ export function SchoolSwitcher({
   activeId: string;
 }) {
   const pathname = usePathname();
+  const id = useId();
 
   return (
     <form action={switchSchool} className="mt-3">
       <input type="hidden" name="next" value={pathname} />
-      <label className="sr-only" htmlFor="school-switcher">
+      <label className="sr-only" htmlFor={id}>
         Cambiar de escuela
       </label>
       <div className="relative">
         <select
-          id="school-switcher"
+          id={id}
           name="schoolId"
           defaultValue={activeId}
           onChange={(e) => e.currentTarget.form?.requestSubmit()}
-          className="w-full appearance-none rounded-xl border border-ink/10 bg-white px-3 py-2 pr-8 text-sm font-medium text-ink shadow-sm outline-none transition focus:border-pitch focus:ring-2 focus:ring-pitch/30"
+          className="md-field min-h-12 appearance-none pr-8 text-sm font-medium text-ellipsis"
         >
           {schools.map((s) => (
             <option key={s.id} value={s.id}>

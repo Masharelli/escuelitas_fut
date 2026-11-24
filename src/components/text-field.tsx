@@ -22,7 +22,7 @@ export function TextField({
 }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-1.5 block text-sm font-medium text-ink">{label}</span>
+      <span className="mb-2 block text-sm font-semibold text-ink">{label}</span>
       <input
         name={name}
         type={type}
@@ -31,7 +31,7 @@ export function TextField({
         required={required}
         defaultValue={defaultValue}
         step={step}
-        className="w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-ink shadow-sm outline-none transition placeholder:text-ink-soft/50 focus:border-pitch focus:ring-2 focus:ring-pitch/20"
+        className="md-field"
       />
       {hint && <span className="mt-1.5 block text-xs text-ink-soft">{hint}</span>}
     </label>

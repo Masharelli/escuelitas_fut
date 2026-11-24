@@ -2,11 +2,14 @@ import { getGuardianMembership } from "@/lib/guardians";
 import { getUnreadCount } from "@/lib/notifications";
 import { PortalShell, type NavItem } from "@/components/portal-shell";
 
-const NAV: NavItem[] = [
+const BOTTOM_NAV: NavItem[] = [
   { href: "/padres", label: "Inicio", icon: "home" },
   { href: "/padres/hijos", label: "Mis hijos", icon: "kids" },
   { href: "/padres/pagos", label: "Pagos", icon: "payments" },
   { href: "/padres/partidos", label: "Partidos", icon: "matches" },
+];
+const NAV: NavItem[] = [
+  ...BOTTOM_NAV,
   { href: "/padres/entrenamientos", label: "Entrenamientos", icon: "calendar" },
 ];
 
@@ -24,6 +27,7 @@ export default async function PadresLayout({
       portalLabel="Portal de padres"
       userName={active.user.name}
       nav={NAV}
+      bottomNav={BOTTOM_NAV}
       schools={all.map((m) => ({ id: m.schoolId, name: m.school.name }))}
       activeSchoolId={membership.schoolId}
       notifications={{ href: "/padres/avisos", unread }}

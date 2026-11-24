@@ -17,7 +17,7 @@ export function Wordmark({
 
   const content = (
     <span className="flex items-center gap-2.5">
-      <svg width={mark} height={mark} viewBox="0 0 26 26" aria-hidden="true">
+      <svg className="shrink-0" width={mark} height={mark} viewBox="0 0 26 26" aria-hidden="true">
         <circle
           cx="13"
           cy="13"

@@ -1,0 +1,149 @@
+{
+  "titulo": "Corrección y revalidación de invitaciones y cierre de sesión",
+  "fecha": "2026-10-16",
+  "zona_horaria": "America/Mexico_City",
+  "fin": "2026-10-16T12:53:56-06:00",
+  "url": "https://escuelitas-fut.vercel.app",
+  "escuela_qa": "QA Accesos mvbajrqa",
+  "deployment": {
+    "id": "dpl_FESodguKZS4sgN6mrk3H7x5hATWY",
+    "estado": "READY",
+    "target": "production",
+    "snapshot_sha256": "5e9d003965b5cc24e943b0e4cc3e9e12b37cc6cb6a8bf2f1cadff05fb7b54721",
+    "proxy_sha1": "e3ad87697ff158cf6c3e35f3ecbb958b89b69cfe",
+    "proxy_publicado_identico_al_local": true
+  },
+  "hallazgos": [
+    {
+      "id": "H01",
+      "estado": "CORREGIDO Y REVALIDADO",
+      "correccion": "El botón usa signOut de next-auth/react contra el endpoint de Auth.js. El proxy conserva la comprobación de autenticación pero no reemite Set-Cookie; las respuestas pendientes no pueden volver a instalar la cookie de sesión.",
+      "evidencia": [
+        "R01",
+        "R06",
+        "R10"
+      ]
+    },
+    {
+      "id": "H02",
+      "estado": "CORREGIDO Y REVALIDADO",
+      "correccion": "El servidor consulta el correo real de la cuenta y lo compara con el destinatario normalizado dentro del UPDATE que consume el token. Un correo distinto no consume la invitación ni recibe membresía/equipo. La pantalla muestra el motivo y no ofrece aceptar.",
+      "evidencia": [
+        "R02",
+        "R03",
+        "R04",
+        "R05"
+      ]
+    }
+  ],
+  "casos": [
+    {
+      "id": "R01",
+      "prueba": "Cerrar sesión desde el portal",
+      "estado": "APROBADA",
+      "resultado": "Después de navegar de Usuarios a Equipos y pulsar Cerrar sesión, /admin redirige al login.",
+      "evidencia": "02-logout-portal-bloquea-ruta-privada.jpg"
+    },
+    {
+      "id": "R02",
+      "prueba": "Correo distinto ante invitación de administrador",
+      "estado": "APROBADA",
+      "resultado": "La cuenta QA del entrenador recibe el aviso de otra cuenta. No se renderiza Aceptar invitación.",
+      "evidencia": "03-correo-distinto-bloqueado-admin.jpg"
+    },
+    {
+      "id": "R03",
+      "prueba": "Destinatario correcto acepta el mismo enlace",
+      "estado": "APROBADA",
+      "resultado": "La cuenta QA administradora inicia sesión desde la invitación y acepta el mismo token que no pudo aceptar el otro correo; accede a /admin.",
+      "evidencia": "04-admin-destinatario-correcto-acepta.jpg"
+    },
+    {
+      "id": "R04",
+      "prueba": "Correo distinto ante invitación de entrenador",
+      "estado": "APROBADA",
+      "resultado": "La cuenta QA administradora recibe el aviso de otra cuenta al abrir la invitación de entrenador y no aparece Aceptar invitación.",
+      "evidencia": "05-correo-distinto-bloqueado-entrenador.jpg"
+    },
+    {
+      "id": "R05",
+      "prueba": "Entrenador correcto y equipo",
+      "estado": "APROBADA",
+      "resultado": "La cuenta QA del entrenador acepta su invitación, entra a /coach y solo aparece QA Equipo A.",
+      "evidencia": "06-entrenador-correcto-equipo-asignado.jpg"
+    },
+    {
+      "id": "R06",
+      "prueba": "Cerrar sesión desde el entrenador",
+      "estado": "APROBADA",
+      "resultado": "Después de pulsar Cerrar sesión en /coach, volver a esa ruta termina en /login.",
+      "evidencia": "07-logout-entrenador-bloquea-portal.jpg"
+    },
+    {
+      "id": "R07",
+      "prueba": "Correo obligatorio también desde Equipos",
+      "estado": "APROBADA",
+      "resultado": "El campo Correo del entrenador tiene required=true. El formulario vacío tiene validity.valid=false y no genera enlace.",
+      "evidencia": "08-equipo-exige-correo-entrenador.jpg"
+    },
+    {
+      "id": "R08",
+      "prueba": "Roles persistidos en las cuentas correctas",
+      "estado": "APROBADA",
+      "resultado": "El dueño vuelve a Usuarios y ve qa.admin como Administrador y qa.coach como Entrenador · QA Equipo A.",
+      "evidencia": "09-roles-correctos-despues-de-validar-correo.jpg"
+    },
+    {
+      "id": "R09",
+      "prueba": "Retirada de los accesos usados",
+      "estado": "APROBADA",
+      "resultado": "Se retiran ambos accesos QA y la pantalla queda sin administradores, entrenadores ni invitaciones pendientes.",
+      "evidencia": "10-qa-sin-accesos-ni-pendientes.jpg"
+    },
+    {
+      "id": "R10",
+      "prueba": "Salida final y ruta privada protegida",
+      "estado": "APROBADA",
+      "resultado": "Cerrar sesión desde Usuarios y volver a /admin/usuarios redirige al login con callbackUrl.",
+      "evidencia": "11-salida-final-acceso-bloqueado.jpg"
+    }
+  ],
+  "pruebas_automatizadas": [
+    "Invitación de administrador y entrenador: correo distinto rechazado, sin membresía, sin asignación y sin consumir el enlace.",
+    "Destinatario correcto: aceptación e idempotencia, tolerando mayúsculas y espacios; otra cuenta sigue siendo rechazada.",
+    "No se crean invitaciones sin correo válido. Las invitaciones antiguas sin destinatario no pueden aceptarse.",
+    "Enlaces vencidos y revocados no se aceptan; se comprueban con la cuenta destinataria correcta.",
+    "Proxy: respuestas de autenticación 200 y 307 pierden Set-Cookie y conservan estado y Location. Se cubre respuesta vacía.",
+    "La suite existente de permisos, aislamiento entre escuelas y registro de actividad sigue pasando."
+  ],
+  "validacion_tecnica": {
+    "typescript": "APROBADA",
+    "eslint_archivos_modificados": "APROBADA",
+    "build_produccion_webpack": "APROBADA",
+    "suite_seguridad": "APROBADA, PostgreSQL temporal en memoria con rollback, usando las funciones reales de la aplicación"
+  },
+  "estado_final": {
+    "administradores_y_entrenadores_qa": 0,
+    "invitaciones_pendientes_qa": 0,
+    "sesion": "cerrada",
+    "datos_reales_modificados": false,
+    "cuentas_qa_eliminadas": false
+  },
+  "limites": [
+    "No se inspeccionaron cookies ni secretos del navegador; la sesión se comprobó por acceso a rutas privadas e interfaz de invitación.",
+    "La llamada directa de aceptación con correo distinto se comprobó en las funciones reales contra PostgreSQL temporal; en producción se validó el bloqueo de la interfaz y la aceptación posterior del mismo enlace por la cuenta correcta.",
+    "No se implementó envío de correo ni un sistema nuevo de verificación de direcciones: se mantiene el flujo manual de enlaces y se exige la coincidencia del correo de la cuenta.",
+    "Las invitaciones antiguas sin correo deben regenerarse con destinatario; no se alteraron esquemas, variables de entorno ni membresías reales.",
+    "El proxy ya no renueva la cookie de sesión en cada página; los endpoints de Auth.js mantienen su manejo de cookies.",
+    "Se usó la escuela QA existente, sin alumnos reales; se retiraron ambos accesos y quedaron las cuentas, equipos y el historial QA."
+  ],
+  "fuentes": [
+    "https://authjs.dev/getting-started/session-management/login",
+    "node_modules/next/dist/docs/01-app/02-guides/authentication.md"
+  ],
+  "resumen": {
+    "APROBADA": 10,
+    "FALLIDA": 0,
+    "PENDIENTE": 0
+  }
+}

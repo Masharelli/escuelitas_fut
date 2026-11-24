@@ -1,0 +1,245 @@
+{
+  "titulo": "Pruebas de invitaciones y permisos",
+  "fecha": "2026-10-16",
+  "zona_horaria": "America/Mexico_City",
+  "intervalo_local": "12:18–12:32",
+  "entorno": "Producción, datos QA separados",
+  "url": "https://escuelitas-fut.vercel.app",
+  "escuela": "QA Accesos mvbajrqa",
+  "run": "mvbajrqa",
+  "cuentas": [
+    "qa.owner.mvbajrqa@example.invalid",
+    "qa.coach.mvbajrqa@example.invalid",
+    "qa.admin.mvbajrqa@example.invalid"
+  ],
+  "datos_residuales": {
+    "escuelas_qa": 1,
+    "cuentas_qa": 3,
+    "equipos_qa": 2,
+    "alumnos": 0,
+    "accesos_admin_coach_activos": 0,
+    "invitaciones_pendientes": 0,
+    "sesion_navegador": "cerrada"
+  },
+  "alcance": "Crear, aceptar y revocar invitaciones de administrador y entrenador; límites de navegación; retirada de accesos; cierre de sesión.",
+  "limites": [
+    "No se consultó directamente la base de datos de producción ni los logs del servidor; persistencia comprobada desde la aplicación en sesiones separadas.",
+    "No se esperaron siete días ni se manipuló la fecha para probar caducidad real en producción.",
+    "La retirada se comprobó tras un nuevo inicio de sesión; no se mantuvo una segunda sesión independiente abierta para comprobar revocación simultánea.",
+    "No se realizaron pagos, gastos, creación de alumnos, sesiones deportivas, partidos ni avisos.",
+    "No se modificó ni desplegó código durante esta sesión de validación.",
+    "T18 fue bloqueada en la primera corrida. Después de la autorización expresa del usuario se ejecutó con una invitación nueva y se confirmó el comportamiento; no quedó pendiente de autorización."
+  ],
+  "hallazgos": [
+    {
+      "id": "H01",
+      "severidad": "Alta",
+      "confirmacion": "Reproducido en navegador",
+      "titulo": "El botón Cerrar sesión no elimina efectivamente la sesión",
+      "reproducir": [
+        "Iniciar sesión con una cuenta QA.",
+        "Pulsar Cerrar sesión en el portal.",
+        "Abrir una invitación y recargarla: sigue apareciendo la cuenta anterior.",
+        "Navegar directamente a /admin: el panel privado sigue disponible."
+      ],
+      "resultado_esperado": "Tras cerrar sesión, las rutas privadas deben redirigir al login y la invitación debe mostrarse como visitante.",
+      "evidencias": [
+        "03-invitacion-tras-cerrar-sesion.jpg",
+        "04-sesion-sigue-activa.jpg"
+      ],
+      "diagnostico": "Posible interacción entre la Server Action de logout y la renovación de cookies del proxy de Auth.js. El proxy se aplica a páginas y la librería conserva Set-Cookie de sesión. Es una hipótesis a confirmar; no se inspeccionaron cookies ni encabezados de red.",
+      "siguiente_paso": "Corregir el cierre de sesión y repetir T16. Una alternativa a evaluar es usar el cierre del endpoint de autenticación desde el botón, manteniendo su protección CSRF."
+    },
+    {
+      "id": "H02",
+      "severidad": "Alta",
+      "confirmacion": "Reproducido en producción con autorización expresa y datos QA",
+      "titulo": "Un enlace de invitación válido permite aceptar con otro correo",
+      "detalle": "Se creó una invitación de Administrador para qa.destinatario.mvbajrqa@example.invalid. La cuenta qa.coach.mvbajrqa@example.invalid, sin membresía al iniciar esta continuación, la aceptó y obtuvo Administración. El dueño confirmó que esa cuenta figuraba como Administrador. La condición necesaria es poseer el enlace válido y aún no consumido; esta prueba no demuestra que sea posible obtener el permiso sin el enlace.",
+      "reproducir": [
+        "Como dueño de QA Accesos mvbajrqa, crear una invitación de Administrador para qa.destinatario.mvbajrqa@example.invalid.",
+        "Cerrar sesión mediante /api/auth/signout e iniciar como qa.coach.mvbajrqa@example.invalid.",
+        "Abrir el enlace válido y pulsar Aceptar invitación.",
+        "Comprobar redirección a /admin y menú administrativo.",
+        "Volver como dueño: Usuarios muestra la cuenta qa.coach.mvbajrqa@example.invalid con el rol Administrador."
+      ],
+      "resultado_esperado": "Si el correo identifica a la persona autorizada, una cuenta con otro correo debe ser rechazada sin consumir el enlace ni recibir la membresía.",
+      "evidencias": [
+        "16-invitacion-dirigida-a-otro-correo.jpg",
+        "17-cuenta-distinta-antes-de-aceptar.jpg",
+        "18-cuenta-distinta-obtiene-administracion.jpg",
+        "19-dueno-confirma-correo-distinto-como-admin.jpg"
+      ],
+      "diagnostico": "acceptStaffInvitation(token, userId) comprueba token, estado y antigüedad, pero no compara el correo del usuario con el destinatario de la invitación. El comportamiento actual es el de un enlace portador de permiso.",
+      "autorizacion": "La aceptación con otra cuenta se ejecutó únicamente tras la autorización expresa del usuario. La revisión automática había bloqueado la primera tentativa.",
+      "limpieza": "Se retiró el acceso temporal; la cuenta volvió a /onboarding al intentar /admin después de iniciar sesión de nuevo. La sesión de pruebas quedó cerrada.",
+      "siguiente_paso": "Definir y aplicar la vinculación al destinatario en el servidor, con verificación adecuada de la identidad/correo. Cubrir correo correcto, correo distinto, enlace consumido y correo no verificado. Volver a ejecutar T18."
+    }
+  ],
+  "casos": [
+    {
+      "id": "T01",
+      "prueba": "Registro de cuenta nueva y escuela QA",
+      "estado": "APROBADA",
+      "resultado": "Registro completado; redirige a onboarding y crea escuela independiente sin alumnos reales.",
+      "evidencia": "01-escuela-qa.jpg"
+    },
+    {
+      "id": "T02",
+      "prueba": "Selector Administrador / Entrenador",
+      "estado": "APROBADA",
+      "resultado": "El dueño ve ambos roles. Entrenador muestra selector de equipo y aviso cuando no existen equipos.",
+      "evidencia": "02-entrenador-sin-equipo.jpg"
+    },
+    {
+      "id": "T03",
+      "prueba": "Validación de correo y equipo obligatorio",
+      "estado": "APROBADA",
+      "resultado": "Correo inválido: validity.valid=false. Entrenador sin equipo: required=true, validity.valid=false; no se crea la invitación.",
+      "evidencia": "02-entrenador-sin-equipo.jpg"
+    },
+    {
+      "id": "T04",
+      "prueba": "Crear invitación de administrador",
+      "estado": "APROBADA",
+      "resultado": "Se genera un enlace pendiente sin asignación de equipo. Posteriormente aceptado por la cuenta administradora QA.",
+      "evidencia": "10-accesos-activos-ambos-roles.jpg"
+    },
+    {
+      "id": "T05",
+      "prueba": "Crear invitación de entrenador",
+      "estado": "APROBADA",
+      "resultado": "Se genera el enlace para QA Equipo A; el selector contiene solo QA Equipo A y QA Equipo B de esta escuela.",
+      "evidencia": "05-invitacion-entrenador-visitante.jpg"
+    },
+    {
+      "id": "T06",
+      "prueba": "Registro desde invitación conserva el destino",
+      "estado": "APROBADA",
+      "resultado": "Crear cuenta de profesor devuelve a la misma invitación, muestra la cuenta nueva y permite aceptarla.",
+      "evidencia": "05-invitacion-entrenador-visitante.jpg"
+    },
+    {
+      "id": "T07",
+      "prueba": "Aceptar invitación de entrenador",
+      "estado": "APROBADA",
+      "resultado": "Redirige a /coach; muestra Portal de entrenador, Mis equipos y únicamente QA Equipo A.",
+      "evidencia": "06-entrenador-equipo-asignado.jpg"
+    },
+    {
+      "id": "T08",
+      "prueba": "Límites del entrenador",
+      "estado": "APROBADA",
+      "resultado": "Puede abrir QA Equipo A. Intentos a QA Equipo B y /admin/usuarios redirigen a /coach.",
+      "evidencia": "07-entrenador-bloqueado-administracion.jpg"
+    },
+    {
+      "id": "T09",
+      "prueba": "Enlace aceptado no se reutiliza",
+      "estado": "APROBADA",
+      "resultado": "Volver a abrir la invitación consumida muestra Invitación no válida.",
+      "evidencia": "08-invitacion-consumida.jpg"
+    },
+    {
+      "id": "T10",
+      "prueba": "Registro y aceptación de administrador",
+      "estado": "APROBADA",
+      "resultado": "Cuenta administradora nueva creada desde la invitación y redirigida a /admin con menú operativo.",
+      "evidencia": "09-administrador-operacion.jpg"
+    },
+    {
+      "id": "T11",
+      "prueba": "Límites del administrador",
+      "estado": "APROBADA",
+      "resultado": "No aparecen Usuarios, Finanzas ni Mi escuela. Acceso directo a /admin/usuarios, /admin/finanzas y /admin/escuela redirige a /admin.",
+      "evidencia": "09-administrador-operacion.jpg"
+    },
+    {
+      "id": "T12",
+      "prueba": "Listado del dueño tras la aceptación",
+      "estado": "APROBADA",
+      "resultado": "Tras iniciar sesión nuevamente como dueño aparecen los dos accesos: Entrenador · QA Equipo A y Administrador. Las invitaciones aceptadas ya no aparecen pendientes.",
+      "evidencia": "10-accesos-activos-ambos-roles.jpg"
+    },
+    {
+      "id": "T13",
+      "prueba": "Revocar invitación pendiente",
+      "estado": "APROBADA",
+      "resultado": "Se revoca una invitación de entrenador para QA Equipo B y el enlace muestra Invitación no válida.",
+      "evidencia": "11-invitacion-revocada.jpg"
+    },
+    {
+      "id": "T14",
+      "prueba": "Retirar entrenador",
+      "estado": "APROBADA",
+      "resultado": "Desaparece del listado de usuarios y de Entrenadores de QA Equipo A. Un nuevo inicio de sesión seguido de /coach termina en /onboarding.",
+      "evidencia": "13-entrenador-acceso-retirado.jpg"
+    },
+    {
+      "id": "T15",
+      "prueba": "Retirar administrador",
+      "estado": "APROBADA",
+      "resultado": "Desaparece del listado. Un nuevo inicio de sesión seguido de /admin termina en /onboarding.",
+      "evidencia": "14-administrador-acceso-retirado.jpg"
+    },
+    {
+      "id": "T16",
+      "prueba": "Botón Cerrar sesión",
+      "estado": "FALLIDA",
+      "resultado": "Después de pulsarlo aparece el login, pero al abrir y recargar una invitación permanece la cuenta del dueño QA. /admin sigue mostrando el panel privado.",
+      "evidencia": "04-sesion-sigue-activa.jpg"
+    },
+    {
+      "id": "T17",
+      "prueba": "Cierre directo del sistema de autenticación",
+      "estado": "APROBADA",
+      "resultado": "/api/auth/signout → Sign out sí elimina la sesión; la invitación vuelve a mostrar Crear cuenta / Inicia sesión. Se usó para separar las cuentas durante las pruebas.",
+      "evidencia": "05-invitacion-entrenador-visitante.jpg"
+    },
+    {
+      "id": "T18",
+      "prueba": "Aceptación con correo distinto del destinatario",
+      "estado": "FALLIDA",
+      "resultado": "Tras autorización expresa del usuario se recreó la invitación de administrador para qa.destinatario.mvbajrqa@example.invalid y la aceptó qa.coach.mvbajrqa@example.invalid. Redirigió a /admin y el dueño confirmó Administrador en esa cuenta distinta. Es necesario poseer el enlace válido; el correo no restringe la aceptación. El acceso temporal se retiró al terminar.",
+      "evidencia": "19-dueno-confirma-correo-distinto-como-admin.jpg"
+    },
+    {
+      "id": "T19",
+      "prueba": "Estado final de la escuela QA",
+      "estado": "APROBADA",
+      "resultado": "Tras ambas corridas, la escuela QA queda sin administradores ni entrenadores y sin invitaciones pendientes. Se retiró el rol concedido en T18, se comprobó /admin → /onboarding al volver a iniciar sesión y se cerró la sesión por la ruta directa.",
+      "evidencia": "20-acceso-controlado-retirado.jpg"
+    }
+  ],
+  "resumen": {
+    "APROBADA": 17,
+    "FALLIDA": 2,
+    "NO EJECUTADA": 0
+  },
+  "deployment": {
+    "id": "dpl_FDKnazZFPsayrJ9q8Gv4CgzwkRyA",
+    "estado": "READY",
+    "tipo": "production",
+    "fuente": "código local publicado; commit base con cambios sin registrar"
+  },
+  "continuacion_autorizada": {
+    "fecha_hora_fin": "2026-10-16T12:32:52-06:00",
+    "autorizacion": "El usuario autorizó expresamente que la cuenta QA del entrenador aceptara una invitación de administrador dirigida a otro correo, solo en QA Accesos mvbajrqa, con retirada posterior del acceso.",
+    "destinatario_invitacion": "qa.destinatario.mvbajrqa@example.invalid",
+    "cuenta_que_acepto": "qa.coach.mvbajrqa@example.invalid",
+    "estado_inicial_cuenta": "Cuenta usada antes como entrenador; sin membresía al inicio de esta continuación, después de la limpieza de la primera corrida.",
+    "resultado": "La cuenta distinta aceptó y recibió Administrador. El dueño comprobó ese rol desde Usuarios. Se retiró el acceso y un nuevo inicio de sesión volvió a terminar en /onboarding.",
+    "alcance": "La prueba se ejecutó con una invitación nueva dentro de la escuela QA, sin alumnos ni datos reales."
+  },
+  "resolucion": {
+    "estado": "H01 y H02 corregidos y revalidados en producción",
+    "informe": "correccion/informe.html",
+    "resultados": "correccion/resultados.json",
+    "deployment": "dpl_FESodguKZS4sgN6mrk3H7x5hATWY",
+    "resumen_revalidacion": {
+      "APROBADA": 10,
+      "FALLIDA": 0,
+      "PENDIENTE": 0
+    }
+  }
+}

@@ -4,7 +4,7 @@ import { PortalShell, type NavItem } from "@/components/portal-shell";
 
 const NAV: NavItem[] = [
   { href: "/coach", label: "Mis equipos", icon: "teams" },
-  { href: "/coach/avisos", label: "Avisos", icon: "home" },
+  { href: "/coach/avisos", label: "Avisos", icon: "notifications" },
 ];
 
 export default async function CoachLayout({
@@ -23,6 +23,7 @@ export default async function CoachLayout({
       portalLabel="Portal de entrenador"
       userName={session.user.name}
       nav={nav}
+      bottomNav={nav}
       schools={candidates.map((m) => ({ id: m.schoolId, name: m.school.name }))}
       activeSchoolId={membership.schoolId}
       notifications={{ href: "/coach/avisos", unread }}
