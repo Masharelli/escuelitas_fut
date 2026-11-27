@@ -31,6 +31,7 @@ export function RsvpButtons({
         type="submit"
         name="rsvp"
         value="yes"
+        aria-pressed={rsvp === "yes"}
         className={`${base} ${rsvp === "yes" ? activeYes : idle}`}
       >
         Asistirá
@@ -39,6 +40,7 @@ export function RsvpButtons({
         type="submit"
         name="rsvp"
         value="no"
+        aria-pressed={rsvp === "no"}
         className={`${base} ${rsvp === "no" ? activeNo : idle}`}
       >
         No asistirá

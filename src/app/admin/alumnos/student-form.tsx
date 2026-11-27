@@ -97,7 +97,7 @@ export function StudentForm({
             label="Último día de pago con beca"
             name="scholarshipPaymentDay"
             options={SCHOLARSHIP_DAY_OPTIONS}
-            placeholder="Usar el vencimiento general"
+            placeholder="Sin fecha límite para la beca"
           />
         </Card>
       )}

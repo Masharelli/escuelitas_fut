@@ -250,7 +250,7 @@ export default async function FinanzasPage({
         <h2 className="font-display text-lg font-bold">Cargos</h2>
         <a
           href={`/admin/finanzas/export${exportQs.size ? `?${exportQs}` : ""}`}
-          className="rounded-lg border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink"
+          className="glass-button rounded-lg border border-ink/15 px-3 py-2 text-sm font-medium text-ink-soft transition hover:text-ink"
         >
           Exportar CSV
         </a>
@@ -375,7 +375,7 @@ function WhatsAppReminder({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-600"
+      className="glass-button rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-600"
     >
       WhatsApp
     </a>

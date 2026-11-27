@@ -81,7 +81,7 @@ export function StudentList({
             {!readOnly && <div className="ml-14 flex flex-wrap items-center gap-1 sm:ml-0 sm:shrink-0">
               <Link
                 href={`/admin/alumnos/${s.id}/editar`}
-                className="inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-medium text-pitch transition hover:bg-pitch/10"
+                className="glass-button inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-medium text-pitch transition hover:bg-pitch/10"
               >
                 Editar
               </Link>

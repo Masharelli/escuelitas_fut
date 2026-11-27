@@ -52,6 +52,7 @@ export default function OnboardingPage() {
                   type="button"
                   onClick={() => setKind(o.value)}
                   aria-pressed={selected}
+                  data-glass-shape="tile"
                   className={`rounded-xl border px-3.5 py-3 text-left transition ${
                     selected
                       ? "border-pitch bg-pitch/[0.06] ring-2 ring-pitch/20"

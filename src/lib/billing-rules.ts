@@ -44,11 +44,13 @@ export function monthlyQuote({
 }) {
   let amountCents = baseAmountCents;
   let scholarshipName: string | null = null;
-  const day = discounts?.length ? scholarshipDay ?? schoolDay : schoolDay;
-  const dueDate = day ? dateInMonth(period, day) : null;
+  const scholarshipDeadline = discounts?.length && scholarshipDay
+    ? dateInMonth(period, scholarshipDay)
+    : null;
+  const dueDate = scholarshipDeadline ?? (schoolDay ? dateInMonth(period, schoolDay) : null);
   for (const discount of discounts ?? []) {
     const discounted = applyDiscount(baseAmountCents, discount);
-    if (discounted >= amountCents || (discounted > 0 && dueDate && today > dueDate)) continue;
+    if (discounted >= amountCents || (discounted > 0 && scholarshipDeadline && today > scholarshipDeadline)) continue;
     amountCents = discounted;
     scholarshipName = discount.name;
   }

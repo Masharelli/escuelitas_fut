@@ -1,0 +1,7 @@
+{
+  "asset": "public/entrenamiento-estadio.webp",
+  "tool": "image_gen.imagegen (built-in)",
+  "purpose": "Photographic background for the public homepage; all text and controls are rendered separately in code.",
+  "reference": "Approved Escuelitas Fut homepage concept from this conversation.",
+  "prompt": "Edit this website mockup into a CLEAN PHOTOGRAPHIC BACKGROUND ASSET ONLY for the implemented website hero. Preserve the photographic look and scene: Mexican youth soccer coach in dark green kit with two boys in green and white kits training with a ball on a real grass pitch under evening stadium floodlights, petrol teal sky and forest greens, warm natural skin. Remove ALL interface elements, ALL text, all logos and shield emblems, all cards, all navigation, borders, buttons, and all lower-page content. Seamlessly reconstruct the photograph behind removed elements. No text or graphics anywhere. Output wide landscape photograph about 16:9, edge-to-edge photo only. Composition optimized for web copy overlay: left 38% is quiet empty darker pitch and blurred trees with ample negative space, coach and two children occupy the center area from x=42% to x=80%, the far right 18% is quiet background pitch for cards to overlay. Keep faces in upper-middle, full bodies, feet and ball visible, realistic anatomy. Beautiful cinematic depth, realistic photography, restrained floodlight bokeh. No interface, no typography, no watermarks, no white borders."
+}

@@ -31,7 +31,7 @@ export default async function EstadisticoPage({
       >
         <Link
           href="/"
-          className="inline-flex items-center justify-center rounded-full bg-pitch px-5 py-2.5 text-sm font-semibold text-chalk transition hover:bg-pitch-deep"
+          className="glass-button inline-flex items-center justify-center rounded-full bg-pitch px-5 py-2.5 text-sm font-semibold text-chalk transition hover:bg-pitch-deep"
         >
           Ir al inicio
         </Link>

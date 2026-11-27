@@ -114,7 +114,7 @@ function TeamList({
           <li key={t.id} className="flex items-center">
             <Link
               href={`/admin/equipos/${t.id}`}
-              className="flex items-center gap-2 rounded-full border border-ink/10 bg-chalk py-1.5 pl-3 pr-2.5 text-sm transition hover:border-pitch/30 hover:bg-pitch/5"
+              className="glass-button flex items-center gap-2 rounded-full border border-ink/10 bg-chalk py-1.5 pl-3 pr-2.5 text-sm transition hover:border-pitch/30 hover:bg-pitch/5"
             >
               <span
                 className="h-2.5 w-2.5 rounded-full"

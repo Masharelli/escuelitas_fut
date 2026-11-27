@@ -70,7 +70,6 @@ export default async function AlumnoFichaPage({
         studentId={student.id}
         canManageScholarships={membership.role === "owner"}
         scholarshipPaymentDay={student.scholarshipPaymentDay}
-        schoolPaymentDay={membership.school.paymentDueDay}
       />
 
       {stats && (

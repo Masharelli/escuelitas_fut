@@ -1,4 +1,4 @@
-import { and, asc, eq, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { charges, plans, schools, students } from "@/db/schema";
@@ -42,7 +42,7 @@ function monthlyAdjustment(
 
   let quote;
   if (period < today.slice(0, 7)) {
-    if (charge.status !== "pending" || !charge.scholarshipName || !charge.dueDate || charge.dueDate >= today) return;
+    if (!scholarshipDay || charge.status !== "pending" || !charge.scholarshipName || !charge.dueDate || charge.dueDate >= today) return;
     quote = { amountCents: baseAmountCents, scholarshipName: null, dueDate: charge.dueDate, status: "pending" as const };
   } else {
     quote = monthlyQuote({ baseAmountCents, discounts, period, today, schoolDay, scholarshipDay });
@@ -50,7 +50,8 @@ function monthlyAdjustment(
 
   const nextDescription = monthlyDescription(description, quote.scholarshipName);
   if (charge.amountCents === quote.amountCents && charge.description === nextDescription
-    && charge.dueDate === quote.dueDate && charge.baseAmountCents === baseAmountCents) return;
+    && charge.dueDate === quote.dueDate && charge.baseAmountCents === baseAmountCents
+    && charge.scholarshipName === quote.scholarshipName && charge.status === quote.status) return;
   return { ...quote, baseAmountCents, description: nextDescription };
 }
 
@@ -101,7 +102,7 @@ export async function generateMonthlyCharges(
       tx.query.charges.findMany({
         where: tdb.charges.scope(and(
           eq(charges.kind, "monthly"), studentId ? eq(charges.studentId, studentId) : undefined,
-          or(eq(charges.periodMonth, period), and(
+          or(eq(charges.periodMonth, period), !create ? gte(charges.periodMonth, today.slice(0, 7)) : undefined, and(
             lt(charges.periodMonth, today.slice(0, 7)), lt(charges.dueDate, today),
             eq(charges.status, "pending"), isNotNull(charges.scholarshipName),
           )),

@@ -71,6 +71,30 @@ npm run dev
 
 App en http://localhost:3000
 
+### Cuenta de prueba local sin Docker
+
+También puedes ejecutar PostgreSQL portátil dentro del proyecto:
+
+```powershell
+npm.cmd install --prefix .local/postgres-runtime --no-audit --no-fund --ignore-scripts --save-exact embedded-postgres@16.16.0-beta.19
+npm.cmd run db:local
+```
+
+Deja esa terminal abierta. En otra terminal aplica las migraciones y crea la
+cuenta de prueba:
+
+```powershell
+npm.cmd run db:migrate
+npm.cmd run db:local-admin
+```
+
+El último comando muestra las credenciales de `admin@escuelitas.test`, con rol
+de dueño en **Escuelita Demo**. Conserva la contraseña al volver a ejecutarlo y
+no reemplaza una cuenta que tenga otra contraseña. Ambos comandos locales
+comprueban que `DATABASE_URL` apunte a este equipo. Los datos, el runtime y las
+credenciales se guardan en `.local/`, excluido de Git. Para los siguientes
+arranques basta con `npm.cmd run db:local` y `npm.cmd run dev` en otra terminal.
+
 ### Scripts de base de datos
 
 | Script                | Qué hace                                      |
@@ -162,10 +186,11 @@ invoca `/api/cron/billing` a diario a partir de las 00:00 de Ciudad de México.
   año**. Se genera un cargo en el aniversario de la fecha de inscripción de cada
   alumno, desde el día en que activaste el plan. Para un 29 de febrero se usa
   el último día de febrero en años no bisiestos. Las renovaciones quedan por pagar.
-- En **Becas** y en la ficha del alumno puedes asignar el descuento y su fecha
-  límite. La fecha del alumno tiene prioridad sobre la del plan de pagos de la
-  escuela. Tras el vencimiento, la mensualidad pendiente vuelve al precio
-  completo. Una beca que cubre la cuota entera se registra como cubierta.
+- En **Becas** y en la ficha del alumno puedes asignar el descuento. El
+  vencimiento general marca la mensualidad como atrasada, pero la beca se
+  conserva si el alumno no tiene una fecha límite de beca. Si configuras esa
+  fecha en su ficha, las becas parciales vencen después de ese día. Una beca que
+  cubre la cuota entera se registra como cubierta.
 
 Si la escuela usa Stripe Connect, el webhook de cuentas conectadas recibe
 `checkout.session.completed`, `checkout.session.async_payment_succeeded` y

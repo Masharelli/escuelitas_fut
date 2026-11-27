@@ -23,7 +23,7 @@ export default async function InvitacionCoachPage({
       >
         <Link
           href="/"
-          className="inline-flex items-center justify-center rounded-full bg-pitch px-5 py-2.5 text-sm font-semibold text-chalk transition hover:bg-pitch-deep"
+          className="glass-button inline-flex items-center justify-center rounded-full bg-pitch px-5 py-2.5 text-sm font-semibold text-chalk transition hover:bg-pitch-deep"
         >
           Ir al inicio
         </Link>
@@ -87,7 +87,7 @@ export default async function InvitacionCoachPage({
         <div className="mt-6">
           <Link
             href={`/registro?next=${encodeURIComponent(next)}`}
-            className="flex w-full items-center justify-center rounded-full bg-pitch px-5 py-3 text-sm font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
+            className="glass-button flex w-full items-center justify-center rounded-full bg-pitch px-5 py-3 text-sm font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch"
           >
             Crear cuenta de {isAdmin ? "administrador" : "profesor"}
           </Link>

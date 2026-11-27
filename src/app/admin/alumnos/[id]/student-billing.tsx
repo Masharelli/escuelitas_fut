@@ -12,13 +12,12 @@ import { assignDiscount, unassignDiscount } from "../../pagos/actions";
 import { setScholarshipPaymentDay } from "../actions";
 
 export async function StudentBilling({
-  schoolId, studentId, canManageScholarships, scholarshipPaymentDay, schoolPaymentDay,
+  schoolId, studentId, canManageScholarships, scholarshipPaymentDay,
 }: {
   schoolId: string;
   studentId: string;
   canManageScholarships: boolean;
   scholarshipPaymentDay: number | null;
-  schoolPaymentDay: number | null;
 }) {
   const tdb = tenantDb(schoolId);
   const [assigned, available, recentCharges] = await Promise.all([
@@ -36,7 +35,6 @@ export async function StudentBilling({
   ]);
   const scholarships = assigned.filter((row) => row.discount.active && row.discount.schoolId === schoolId);
   const options = available.filter((discount) => !scholarships.some((row) => row.discountId === discount.id));
-  const dueDay = scholarshipPaymentDay ?? schoolPaymentDay;
   const back = `/admin/alumnos/${studentId}`;
 
   return (
@@ -64,7 +62,9 @@ export async function StudentBilling({
               ))}
             </ul>
             <p className="mt-3 text-sm text-ink-soft">
-              {dueDay ? `Las becas parciales aplican hasta el día ${dueDay} de cada mes.` : "Sin fecha límite para pagar con beca."}
+              {scholarshipPaymentDay
+                ? `Las becas parciales aplican hasta el día ${scholarshipPaymentDay} de cada mes.`
+                : "La beca se conserva aunque venza la mensualidad."}
             </p>
           </>
         )}
@@ -87,7 +87,7 @@ export async function StudentBilling({
                   name="scholarshipPaymentDay"
                   options={SCHOLARSHIP_DAY_OPTIONS}
                   defaultValue={scholarshipPaymentDay?.toString()}
-                  placeholder="Usar el vencimiento general"
+                  placeholder="Sin fecha límite para la beca"
                 />
                 <SubmitButton inline>Guardar día</SubmitButton>
               </form>

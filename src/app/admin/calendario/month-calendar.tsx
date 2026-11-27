@@ -89,6 +89,7 @@ export function MonthCalendar({
               type="button"
               onClick={() => setSelected(d.key)}
               aria-pressed={isSel}
+              data-glass-shape="tile"
               style={{ aspectRatio: "1 / 1" }}
               className={`flex flex-col items-center justify-start gap-1 rounded-xl border p-1 text-sm transition sm:p-1.5 ${
                 isSel

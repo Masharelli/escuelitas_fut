@@ -380,9 +380,10 @@ try {
     ].map(([student, grant]) => ({ schoolId: academy.id, studentId: student.id, discountId: grant.id })));
     assert.equal(await generateMonthlyCharges(academy.id, "2026-02", "2026-02-05"), 3);
     assert.equal(await generateMonthlyCharges(academy.id, "2026-02", "2026-02-05"), 0);
-    const monthly = () => tx.query.charges.findMany({
-      where: eq(schema.charges.schoolId, academy.id),
-    }).then((rows) => new Map(rows.filter((row) => row.kind === "monthly").map((row) => [row.studentId, row])));
+    const monthly = (period = "2026-02") => tx.query.charges.findMany({
+      where: and(eq(schema.charges.schoolId, academy.id), eq(schema.charges.kind, "monthly"),
+        eq(schema.charges.periodMonth, period)),
+    }).then((rows) => new Map(rows.map((row) => [row.studentId, row])));
     let month = await monthly();
     assert.equal(month.get(partial.id).amountCents, 45000);
     assert.equal(month.get(partial.id).scholarshipName, "Deportiva");
@@ -397,6 +398,26 @@ try {
     month = await monthly();
     assert.equal(month.get(partial.id).amountCents, 60000);
     assert.equal(month.get(full.id).status, "paid");
+
+    // A late scholarship assignment must update an existing unpaid charge
+    // even when the school's general payment day has passed.
+    await tx.insert(schema.studentDiscounts).values({
+      schoolId: academy.id, studentId: regular.id, discountId: fixedGrant.id,
+    });
+    await generateMonthlyCharges(academy.id, "2026-02", "2026-02-11", regular.id, false);
+    const discounted = (await monthly()).get(regular.id);
+    assert.equal(discounted.id, month.get(regular.id).id);
+    assert.equal(discounted.amountCents, 38000);
+    assert.equal(discounted.scholarshipName, "Fija");
+    assert.equal(discounted.dueDate, "2026-02-10");
+    assert.equal(discounted.status, "pending");
+
+    await generateMonthlyCharges(academy.id, "2026-03", "2026-03-11", regular.id);
+    const followingMonth = (await monthly("2026-03")).get(regular.id);
+    assert.equal(followingMonth.periodMonth, "2026-03");
+    assert.equal(followingMonth.amountCents, 38000);
+    assert.equal((await monthly()).get(regular.id).amountCents, 38000);
+
     assert.equal(await generateAnnualRenewals(academy.id, "2026-02-27"), 0);
     assert.equal(await generateAnnualRenewals(academy.id, "2026-02-28"), 1);
     assert.equal(await generateAnnualRenewals(academy.id, "2026-02-28"), 0);

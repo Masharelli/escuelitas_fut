@@ -79,13 +79,13 @@ export default async function SchoolPublicPage({
             <div className="mt-9 flex w-full flex-col items-center gap-3 sm:flex-row sm:justify-center">
               <Link
                 href={registroHref}
-                className="inline-flex w-full items-center justify-center rounded-full bg-pitch px-6 py-3 font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch sm:w-auto"
+                className="glass-button inline-flex w-full items-center justify-center rounded-full bg-pitch px-6 py-3 font-semibold text-chalk shadow-sm transition hover:bg-pitch-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch sm:w-auto"
               >
                 Crear cuenta de tutor
               </Link>
               <Link
                 href={loginHref}
-                className="inline-flex w-full items-center justify-center rounded-full border border-ink/15 bg-white/80 px-6 py-3 font-semibold text-ink transition hover:border-pitch/30 hover:bg-pitch/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch sm:w-auto"
+                className="glass-button inline-flex w-full items-center justify-center rounded-full border border-ink/15 bg-white/80 px-6 py-3 font-semibold text-ink transition hover:border-pitch/30 hover:bg-pitch/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pitch sm:w-auto"
               >
                 Iniciar sesión
               </Link>

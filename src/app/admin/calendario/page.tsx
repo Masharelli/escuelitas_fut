@@ -102,7 +102,7 @@ export default async function CalendarioPage({
       <div className="mb-4 flex items-center justify-between gap-3">
         <Link
           href={`/admin/calendario?m=${offset - 1}`}
-          className="rounded-full border border-ink/15 bg-white px-3.5 py-1.5 text-sm font-semibold text-ink-soft transition hover:text-ink"
+          className="glass-button rounded-full border border-ink/15 bg-white px-3.5 py-1.5 text-sm font-semibold text-ink-soft transition hover:text-ink"
           aria-label="Mes anterior"
         >
           ←
@@ -122,7 +122,7 @@ export default async function CalendarioPage({
         </div>
         <Link
           href={`/admin/calendario?m=${offset + 1}`}
-          className="rounded-full border border-ink/15 bg-white px-3.5 py-1.5 text-sm font-semibold text-ink-soft transition hover:text-ink"
+          className="glass-button rounded-full border border-ink/15 bg-white px-3.5 py-1.5 text-sm font-semibold text-ink-soft transition hover:text-ink"
           aria-label="Mes siguiente"
         >
           →

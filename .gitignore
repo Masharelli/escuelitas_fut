@@ -45,6 +45,9 @@ sst-env.d.ts
 # vercel
 .vercel
 
+# Local database runtime, data and test-account credentials
+/.local/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

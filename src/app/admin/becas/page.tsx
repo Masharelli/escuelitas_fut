@@ -30,7 +30,7 @@ export default async function BecasPage() {
     <div className="mx-auto w-full max-w-5xl">
       <PageHeader
         title="Becas"
-        subtitle="Crea becas y asígnalas a uno o varios alumnos. Si hay varias, se aplica la que más reduce la mensualidad."
+        subtitle="Asigna becas para descontar la mensualidad automáticamente. Si hay varias, se aplica la que más reduce la cuota. Puedes fijar una fecha límite en la ficha del alumno."
       />
       <div className="mt-3 grid grid-cols-1 gap-4 xl:grid-cols-3">
         <Card>

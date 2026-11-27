@@ -35,8 +35,9 @@ export function FootballArtwork({
             style={{
               left: `${x}%`,
               top: `${y}%`,
-              width: `${Math.hypot(run, rise)}%`,
-              rotate: `${Math.atan2(rise, run)}rad`,
+              // Keep CSS precision identical after server-side serialization.
+              width: `${Math.hypot(run, rise).toFixed(4)}%`,
+              rotate: `${Math.atan2(rise, run).toFixed(4)}rad`,
             }}
           />
         );

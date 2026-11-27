@@ -1,7 +1,7 @@
 "use client";
 
 import Image, { type StaticImageData } from "next/image";
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 
 import styles from "./recorrido.module.css";
 
@@ -11,35 +11,42 @@ export function Screenshot({
   caption,
   board = false,
   portrait = false,
+  preview,
 }: {
   image: StaticImageData;
   alt: string;
   caption: string;
   board?: boolean;
   portrait?: boolean;
+  preview?: ReactNode;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
 
   return (
     <figure className={`min-w-0 ${styles.reveal} ${styles.mediaReveal} ${portrait ? "mx-auto w-full max-w-64" : ""}`}>
-      <div className={board ? styles.boardFrame : "rounded-2xl bg-surface-container p-3 sm:p-5"}>
+      <div className={styles.boardFrame}>
+        <div className="min-w-0 overflow-hidden rounded-lg border border-outline-variant">
+          {preview ?? (
+            <Image
+              src={image}
+              alt={alt}
+              unoptimized
+              className="h-auto w-full rounded-[inherit]"
+            />
+          )}
+        </div>
+      </div>
+      <figcaption className={`mt-2 flex flex-col items-start gap-3 text-sm ${board ? styles.boardCopy : "text-ink-soft"}`}>
+        {caption}
         <button
           type="button"
-          aria-label={`Ver ${caption.toLowerCase()} en grande`}
+          aria-label={`Ver captura actual: ${caption.toLowerCase()}`}
           aria-haspopup="dialog"
           onClick={() => dialog.current?.showModal()}
-          className={`block w-full min-w-0 cursor-zoom-in rounded-lg border hover:shadow-md motion-safe:transition-shadow ${board ? styles.boardTrigger : "border-outline-variant"}`}
+          className="md-button min-h-10 px-4 text-xs"
         >
-          <Image
-            src={image}
-            alt={alt}
-            unoptimized
-            className="h-auto w-full rounded-[inherit]"
-          />
+          Ampliar vista previa <span aria-hidden="true">↗</span>
         </button>
-      </div>
-      <figcaption className={`mt-2 text-sm ${board ? styles.boardCopy : "text-ink-soft"}`}>
-        {caption}
       </figcaption>
       <dialog
         ref={dialog}
