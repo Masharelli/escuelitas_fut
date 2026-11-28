@@ -72,9 +72,9 @@ export default async function AdminPartidosPage({
         <div className="order-2 min-w-0 xl:order-1">
           <FilterBar
             selects={[
-              { key: "equipo", allLabel: "Todos los equipos", options: teamOptions },
-              { key: "torneo", allLabel: "Todos los torneos", options: tournamentOptions },
-              { key: "estado", allLabel: "Todos los estados", options: statusOptions },
+              { key: "equipo", label: "Filtrar por equipo", allLabel: "Todos los equipos", icon: "teams", options: teamOptions },
+              { key: "torneo", label: "Filtrar por torneo", allLabel: "Todos los torneos", icon: "trophy", options: tournamentOptions },
+              { key: "estado", label: "Filtrar por estado", allLabel: "Todos los estados", icon: "attendance", options: statusOptions },
             ]}
           />
           <h2 className="font-display text-lg font-bold">Próximos</h2>

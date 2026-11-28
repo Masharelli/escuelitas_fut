@@ -1,0 +1,93 @@
+.adminButtons :is(button:not([data-plain]), input[type="submit"], input[type="reset"], :global(.md-button), :global(.md-icon-button), :global(.glass-button)) {
+  border: 1px solid var(--admin-button-border, var(--select-border));
+  border-radius: .75rem;
+  color: var(--admin-button-ink, var(--color-pitch));
+  background: var(--admin-button-fill, var(--select-surface));
+  box-shadow: none;
+  text-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+
+  &:is([aria-pressed="true"], [aria-expanded="true"]) {
+    border-color: var(--admin-button-ink, var(--color-pitch));
+    background-color: var(--admin-button-hover, var(--select-active));
+    box-shadow: none;
+  }
+
+  &:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--admin-button-ink, var(--color-pitch));
+    background-color: var(--admin-button-hover, var(--select-active));
+    box-shadow: none;
+  }
+
+  &:active:not(:disabled):not([aria-disabled="true"]) {
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--admin-button-ink, var(--color-pitch));
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+
+  &:is(:disabled, [aria-disabled="true"]) {
+    opacity: .6;
+    box-shadow: none;
+  }
+
+  & :where(:global(.text-ink-soft)) {
+    color: inherit;
+  }
+
+  &:has(> [data-button-icon]) {
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+  }
+
+  & > [data-button-icon] {
+    display: grid;
+    flex: 0 0 2.65rem;
+    place-items: center;
+    border-inline-end: 1px solid var(--admin-button-border, var(--select-border));
+    border-start-start-radius: calc(.75rem - 1px);
+    border-end-start-radius: calc(.75rem - 1px);
+    background: var(--admin-button-hover, var(--select-active));
+  }
+
+  & > [data-button-label] {
+    display: grid;
+    min-width: 0;
+    place-items: center;
+    padding: .6rem .9rem;
+  }
+}
+
+.adminButtons :global(.md-filled) {
+  --admin-button-border: #82a08a;
+}
+
+.adminButtons :global(.md-outlined) {
+  --admin-button-fill: var(--color-surface);
+}
+
+.adminButtons :global(.md-tonal) {
+  --admin-button-fill: var(--select-active);
+  --admin-button-hover: var(--color-chalk-deep);
+}
+
+.adminButtons :is(button:not([data-plain]), :global(.glass-button)):where(
+  [data-glass-tone="danger"], [class~="text-red-700"], [class~="text-red-600"], [class~="hover:text-red-600"], [class~="bg-red-500"]
+) {
+  --admin-button-ink: #842e29;
+  --admin-button-border: #d6a7a2;
+  --admin-button-fill: #fcf0ee;
+  --admin-button-hover: #f7dfdb;
+}
+
+.adminButtons :is(button:not([data-plain]), :global(.glass-button)):where([data-glass-tone="warning"], [class~="bg-amber-400"]) {
+  --admin-button-ink: var(--color-on-tertiary-container);
+  --admin-button-border: #c9a66b;
+  --admin-button-fill: #fcf4e6;
+  --admin-button-hover: var(--color-tertiary-container);
+}

@@ -3,7 +3,7 @@ import { and, asc, eq, gte, isNotNull, isNull, lt, lte, or, sql } from "drizzle-
 import { db } from "@/db";
 import { charges, plans, schools, students } from "@/db/schema";
 import { activeDiscountsByStudent, notifyChargesCreated, periodLabel } from "@/lib/billing";
-import { annualAnniversary, billingDate, monthlyQuote, type DiscountRow } from "@/lib/billing-rules";
+import { annualAnniversary, billingDate, hasReachedBillingDay, monthlyQuote, type DiscountRow } from "@/lib/billing-rules";
 import { tenantDb } from "@/lib/tenant-db";
 
 type BillingTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -23,7 +23,7 @@ function monthlyAdjustment(
   charge: Charge,
   today: string,
   discounts: DiscountRow[] | undefined,
-  schoolDay: number | null,
+  school: { paymentDueDay: number | null; paymentGenerationDay: number },
   scholarshipDay: number | null,
   plan: Plan | null,
 ) {
@@ -45,7 +45,10 @@ function monthlyAdjustment(
     if (!scholarshipDay || charge.status !== "pending" || !charge.scholarshipName || !charge.dueDate || charge.dueDate >= today) return;
     quote = { amountCents: baseAmountCents, scholarshipName: null, dueDate: charge.dueDate, status: "pending" as const };
   } else {
-    quote = monthlyQuote({ baseAmountCents, discounts, period, today, schoolDay, scholarshipDay });
+    quote = monthlyQuote({
+      baseAmountCents, discounts, period, today, scholarshipDay,
+      schoolDay: school.paymentDueDay, generationDay: school.paymentGenerationDay,
+    });
   }
 
   const nextDescription = monthlyDescription(description, quote.scholarshipName);
@@ -78,19 +81,23 @@ export async function generateMonthlyCharges(
   period: string,
   today = billingDate(),
   studentId?: string,
-  create = true,
+  create: boolean | "scheduled" = true,
 ): Promise<number> {
   const tdb = tenantDb(schoolId);
-  const school = await db.query.schools.findFirst({
-    where: eq(schools.id, schoolId),
-    columns: { paymentDueDay: true, stripeAccountId: true },
-  });
-  if (!school) return 0;
 
   const created = await db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${schoolId}, 0))`);
+    const school = await tx.query.schools.findFirst({
+      where: eq(schools.id, schoolId),
+      columns: { paymentDueDay: true, paymentGenerationDay: true, stripeAccountId: true },
+    });
+    if (!school) return [];
+    // La tarea diaria ajusta los cargos existentes incluso antes de la fecha de alta.
+    const shouldCreate = create === "scheduled"
+      ? period === today.slice(0, 7) && hasReachedBillingDay(today, school.paymentGenerationDay)
+      : create;
     const [monthlyPlans, targets, discountRows, rows] = await Promise.all([
-      create ? tx.query.plans.findMany({
+      shouldCreate ? tx.query.plans.findMany({
         where: tdb.plans.scope(and(eq(plans.kind, "monthly"), eq(plans.active, true))),
         orderBy: [asc(plans.createdAt), asc(plans.id)],
       }) : [],
@@ -117,14 +124,14 @@ export async function generateMonthlyCharges(
       const discount = discountRows.get(row.studentId);
       const day = targetsById.get(row.studentId)?.scholarshipPaymentDay ?? null;
       const plan = row.plan?.schoolId === schoolId ? row.plan : null;
-      if (!monthlyAdjustment(row, today, discount, school.paymentDueDay, day, plan)) continue;
+      if (!monthlyAdjustment(row, today, discount, school, day, plan)) continue;
       const [locked] = await tx.select().from(charges).where(eq(charges.id, row.id)).for("update");
       if (!locked) continue;
-      const adjustment = monthlyAdjustment(locked, today, discount, school.paymentDueDay, day, plan);
+      const adjustment = monthlyAdjustment(locked, today, discount, school, day, plan);
       if (adjustment) await updateMonthlyCharge(tx, locked, adjustment, school.stripeAccountId);
     }
 
-    if (!create) return [];
+    if (!shouldCreate) return [];
     const pending: (typeof charges.$inferInsert)[] = [];
     for (const student of targets) {
       if (student.status !== "active" || billed.has(student.id) || (student.enrolledOn && student.enrolledOn.slice(0, 7) > period)) continue;
@@ -133,6 +140,7 @@ export async function generateMonthlyCharges(
       const quote = monthlyQuote({
         baseAmountCents: plan.amountCents, discounts: discountRows.get(student.id), period, today,
         schoolDay: school.paymentDueDay, scholarshipDay: student.scholarshipPaymentDay,
+        generationDay: school.paymentGenerationDay,
       });
       pending.push({
         schoolId, studentId: student.id, planId: plan.id, kind: "monthly", periodMonth: period,

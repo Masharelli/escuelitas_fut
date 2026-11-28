@@ -1,0 +1,2 @@
+ALTER TABLE "schools" ADD COLUMN "payment_generation_day" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "schools" ADD CONSTRAINT "schools_payment_generation_day_check" CHECK ("schools"."payment_generation_day" between 1 and 28);

@@ -2,6 +2,8 @@ import { requireRole, ADMIN_ROLES, hasCoachAccess } from "@/lib/tenant";
 import { getUnreadCount } from "@/lib/notifications";
 import { orgVocab } from "@/lib/org";
 import { PortalShell, type NavItem } from "@/components/portal-shell";
+import selectStyles from "@/components/form/select-styles.module.css";
+import buttonStyles from "./button-styles.module.css";
 
 /** Navegación del panel según el tipo de organización y el plan. */
 function buildNav(kind: string, settingsLabel: string, role: string): NavItem[] {
@@ -23,11 +25,12 @@ function buildNav(kind: string, settingsLabel: string, role: string): NavItem[] 
     { href: "/admin/alumnos", label: "Alumnos", icon: "students" },
     { href: "/admin/equipos", label: "Equipos", icon: "teams" },
     { href: "/admin/pagos", label: "Pagos", icon: "payments" },
+    ...(isOwner ? [{ href: "/admin/cuotas", label: "Cuotas y planes", icon: "calendar" as const }] : []),
     ...(isOwner ? [{ href: "/admin/becas", label: "Becas", icon: "students" as const }] : []),
     ...(isOwner ? [{ href: "/admin/finanzas", label: "Finanzas", icon: "finance" as const }] : []),
     { href: "/admin/partidos", label: "Partidos", icon: "matches" },
     { href: "/admin/calendario", label: "Calendario", icon: "calendar" },
-    { href: "/admin/asistencias", label: "Asistencias", icon: "attendance" },
+    { href: "/admin/asistencias", label: "Entrenamientos", icon: "attendance" },
     { href: "/admin/torneos", label: "Torneos", icon: "trophy" },
   ];
   nav.push({ href: "/admin/gastos", label: isOwner ? "Egresos" : "Registrar gasto", icon: "finance" });
@@ -54,6 +57,7 @@ export default async function AdminLayout({
 
   return (
     <PortalShell
+      className={`${selectStyles.admin} ${buttonStyles.adminButtons}`}
       schoolName={membership.school.name}
       portalLabel={vocab.portalLabel}
       userName={session.user.name}

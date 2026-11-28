@@ -20,6 +20,7 @@ registerHooks({
     if (context.parentURL?.endsWith("/src/proxy.ts") && specifier === "next-auth") return { url: "security:proxy-auth", shortCircuit: true };
     if (context.parentURL?.endsWith("/src/proxy.ts") && specifier === "./auth.config") return { url: "security:proxy-config", shortCircuit: true };
     if (specifier === "@/db") return { url: "security:db", shortCircuit: true };
+    if (specifier === "stripe" && context.parentURL?.endsWith("/src/lib/stripe.ts")) return { url: "security:stripe", shortCircuit: true };
     if (specifier === "@/auth") return { url: "security:auth", shortCircuit: true };
     if (specifier === "next/headers") return { url: "security:headers", shortCircuit: true };
     if (specifier === "next/cache") return { url: "security:cache", shortCircuit: true };
@@ -35,6 +36,11 @@ registerHooks({
     if (url === "security:proxy-auth") return { format: "module", source: "export default () => ({ auth: (...args) => globalThis.securityProxyAuth(...args) });", shortCircuit: true };
     if (url === "security:proxy-config") return { format: "module", source: "export const authConfig = {};", shortCircuit: true };
     if (url === "security:db") return { format: "module", source: "export const db = globalThis.securityDb;", shortCircuit: true };
+    if (url === "security:stripe") return {
+      format: "module",
+      source: "export default class Stripe { paymentIntents = { create: (...args) => globalThis.securityStripePayment(...args) }; }",
+      shortCircuit: true,
+    };
     if (url === "security:auth") return { format: "module", source: "export const auth = async () => globalThis.securitySession;", shortCircuit: true };
     if (url === "security:headers") return { format: "module", source: "export const cookies = async () => ({ get: () => ({value: globalThis.securitySchool}) }); export const headers = async () => new Headers({host: 'localhost:3000'});", shortCircuit: true };
     if (url === "security:cache") return { format: "module", source: "export const revalidatePath = () => {};", shortCircuit: true };
@@ -61,6 +67,7 @@ const schema = await import("@/db/schema");
 const client = postgres(process.env.DATABASE_URL, { max: 1, prepare: false, connect_timeout: 5 });
 const database = drizzle(client, { schema });
 const rollback = new Error("Comprobación terminada: revertir todos los datos de prueba");
+const previousStripeKey = process.env.STRIPE_SECRET_KEY;
 try {
   await database.transaction(async (tx) => {
     if (!(await tx.execute("select to_regclass('public.activity_log') as existing"))[0].existing) {
@@ -215,7 +222,7 @@ try {
     for (const amount of ["-500", "", "abc500", "1.001", "999999999999"]) assert.equal(pesosToCents(amount), null);
     const leagueActions = await import("@/app/admin/liga/temporadas/actions");
     const leagueTeamActions = await import("@/app/admin/liga/equipos/actions");
-    const forbidden = [payments.createPlan, payments.createDiscount, payments.assignDiscount, payments.unassignDiscount, payments.deleteDiscount, payments.deletePlan, payments.setPaymentDueDay, payments.createOneOffCharge, payments.generateCharges, payments.cancelCharge, expenses.deleteExpense, finance.cancelCharge, finance.markChargePending, schoolActions.updateSchool, usersActions.inviteStaff, usersActions.revokeUserInvitation, usersActions.removeStaffAccess, leagueActions.setRegistrationFee, leagueActions.generateRegistration, leagueActions.cancelRegistrationCharge, leagueTeamActions.deleteLeagueTeam];
+    const forbidden = [payments.createPlan, payments.createDiscount, payments.assignDiscount, payments.unassignDiscount, payments.deleteDiscount, payments.deletePlan, payments.setPaymentSchedule, payments.createOneOffCharge, payments.generateCharges, payments.cancelCharge, expenses.deleteExpense, finance.cancelCharge, finance.markChargePending, schoolActions.updateSchool, usersActions.inviteStaff, usersActions.revokeUserInvitation, usersActions.removeStaffAccess, leagueActions.setRegistrationFee, leagueActions.generateRegistration, leagueActions.cancelRegistrationCharge, leagueTeamActions.deleteLeagueTeam];
     forbidden.push(usersActions.grantStaffAdministration);
     for (const restricted of [admin, user]) {
       actor(restricted);
@@ -426,14 +433,62 @@ try {
     });
     assert.equal(annual.studentId, partial.id);
     assert.equal(annual.dueDate, "2026-02-28");
+
+    const { chargeAutopayForPeriod } = await import("@/lib/stripe");
+    assert.equal(academy.paymentGenerationDay, 1);
+    await tx.insert(schema.memberships).values({ schoolId: academy.id, userId: owner.id, role: "owner" });
+    actor(owner);
+    globalThis.securitySchool = academy.id;
+    const schedule = (generationDay, dueDay) => payments.setPaymentSchedule(undefined, form({ generationDay, dueDay }));
+    assert.ok((await schedule(5, 4)).error);
+    assert.equal((await tx.query.schools.findFirst({ where: eq(schema.schools.id, academy.id) })).paymentGenerationDay, 1);
+    assert.deepEqual(await schedule(5, 10), { ok: true });
+
+    const scheduled = (date) => generateMonthlyCharges(academy.id, date.slice(0, 7), date, undefined, "scheduled");
+    assert.equal(await scheduled("2026-07-04"), 0);
+    assert.equal((await monthly("2026-07")).size, 0);
+    assert.equal(await scheduled("2026-07-05"), 3);
+    assert.equal(await scheduled("2026-07-05"), 0);
+    assert.equal((await monthly("2026-07")).get(partial.id).dueDate, "2026-07-05");
+    assert.equal((await monthly("2026-07")).get(regular.id).dueDate, "2026-07-10");
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_local_mock";
+    const stripeAttempts = [];
+    globalThis.securityStripePayment = async (params) => {
+      stripeAttempts.push(params);
+      return { id: `pi_local_${params.metadata.chargeId}`, status: "succeeded" };
+    };
+    await tx.update(schema.schools).set({ stripeAccountId: "acct_local_mock", stripeChargesEnabled: true })
+      .where(eq(schema.schools.id, academy.id));
+    await tx.insert(schema.autopay).values([partial, regular].map((student) => ({
+      schoolId: academy.id, studentId: student.id, userId: owner.id, status: "active",
+      stripeCustomerId: `cus_${student.id}`, stripePaymentMethodId: `pm_${student.id}`,
+    })));
+    assert.equal(await chargeAutopayForPeriod(academy.id, "2026-07", "2026-07-04"), 0);
+    assert.equal(await chargeAutopayForPeriod(academy.id, "2026-07", "2026-07-05"), 1);
+    assert.equal(stripeAttempts[0].amount, 52500);
+    assert.equal(await chargeAutopayForPeriod(academy.id, "2026-07", "2026-07-09"), 0);
+    assert.equal(await chargeAutopayForPeriod(academy.id, "2026-07", "2026-07-11"), 1);
+    assert.equal(await chargeAutopayForPeriod(academy.id, "2026-07", "2026-07-11"), 0);
+    assert.equal(stripeAttempts.length, 2);
+    assert.equal((await monthly("2026-07")).get(regular.id).status, "paid");
+
+    assert.equal(await scheduled("2026-08-06"), 3);
+    assert.equal(await scheduled("2026-08-06"), 0);
+    const manual = await payments.generateCharges(undefined, form({ period: billingDate().slice(0, 7) }));
+    assert.equal(manual.ok, true);
+    assert.equal(stripeAttempts.length, 2);
     throw rollback;
   });
 } catch (error) {
   if (error !== rollback) throw error;
-  console.log("Seguridad: roles, precios y becas del dueño, operación administrativa, avisos por equipo, historial e invitaciones comprobados en Postgres local con rollback.");
+  console.log("Seguridad: roles, precios, becas, calendario de cuotas, autopago simulado, historial, avisos e invitaciones comprobados en Postgres local con rollback.");
 } finally {
   delete globalThis.securityDb;
   delete globalThis.securitySession;
   delete globalThis.securitySchool;
+  delete globalThis.securityStripePayment;
+  if (previousStripeKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+  else process.env.STRIPE_SECRET_KEY = previousStripeKey;
   await client.end();
 }

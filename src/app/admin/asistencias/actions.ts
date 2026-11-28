@@ -88,6 +88,7 @@ export async function createSession(
   }
 
   revalidatePath("/admin/asistencias");
+  revalidatePath("/admin/calendario");
   revalidatePath(`/coach/equipos/${team.id}`);
   redirect(
     membership.role === "coach"
@@ -172,6 +173,7 @@ export async function deleteSession(formData: FormData) {
   await tdb.sessions.deleteById(sessionId);
 
   revalidatePath("/admin/asistencias");
+  revalidatePath("/admin/calendario");
   revalidatePath(`/coach/equipos/${session.teamId}`);
   redirect(
     membership.role === "coach"

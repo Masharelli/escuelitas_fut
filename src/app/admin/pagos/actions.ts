@@ -12,7 +12,7 @@ import { db } from "@/db";
 import { students, schools, studentDiscounts } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
-import { getStripe, chargeAutopayForPeriod } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import {
   notifyChargesCreated,
   markManualChargePaid,
@@ -20,10 +20,10 @@ import {
   pesosToCents,
   type ChargeKind,
 } from "@/lib/billing";
-import { billingDate } from "@/lib/billing-rules";
+import { billingDate, isBillingPeriod } from "@/lib/billing-rules";
 import { generateMonthlyCharges } from "@/lib/recurring-billing";
 
-export type FormState = { error?: string; ok?: boolean } | undefined;
+export type FormState = { error?: string; ok?: boolean; period?: string } | undefined;
 
 async function refreshScholarships(schoolId: string, studentId?: string) {
   const today = billingDate();
@@ -40,7 +40,7 @@ async function refreshScholarships(schoolId: string, studentId?: string) {
 /**
  * Inicia (o reanuda) el onboarding de Stripe Connect Express de la escuela.
  * Crea la cuenta conectada si no existe y redirige al formulario hosteado de
- * Stripe; al terminar, Stripe regresa a /admin/pagos.
+ * Stripe; al terminar, Stripe regresa a la configuración de cuotas.
  */
 export async function connectStripe() {
   const { membership, session } = await requireRole(["owner"]);
@@ -48,7 +48,7 @@ export async function connectStripe() {
   const school = await db.query.schools.findFirst({
     where: eq(schools.id, membership.schoolId),
   });
-  if (!school) redirect("/admin/pagos");
+  if (!school) redirect("/admin/cuotas");
 
   const stripe = getStripe();
   let accountId = school.stripeAccountId;
@@ -74,8 +74,8 @@ export async function connectStripe() {
   const origin = h.get("origin") ?? `http://${h.get("host")}`;
   const link = await stripe.accountLinks.create({
     account: accountId,
-    refresh_url: `${origin}/admin/pagos`,
-    return_url: `${origin}/admin/pagos?connected=1`,
+    refresh_url: `${origin}/admin/cuotas#configuracion`,
+    return_url: `${origin}/admin/cuotas?connected=1#configuracion`,
     type: "account_onboarding",
   });
 
@@ -144,24 +144,31 @@ export async function createPlan(
     await tdb.plans.insert(values);
   }
 
-  revalidatePath("/admin/pagos");
+  revalidatePath("/admin/cuotas");
   return { ok: true };
   });
 }
 
-/** Configura el día del mes (1-28) en que vencen las cuotas; vacío = sin vencimiento. */
-export async function setPaymentDueDay(formData: FormData) {
-  const { membership, session } = await requireRole(["owner"]);
-  return recordActivity(membership, session.user.name, "Definir fecha de pago", formData, async () => {
-  const raw = String(formData.get("dueDay") ?? "").trim();
-  const n = Math.trunc(Number(raw));
-  const day =
-    raw === "" || !Number.isFinite(n) ? null : Math.min(28, Math.max(1, n));
-  await db
-    .update(schools)
-    .set({ paymentDueDay: day })
-    .where(eq(schools.id, membership.schoolId));
-  await refreshScholarships(membership.schoolId);
+export async function setPaymentSchedule(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { membership, session } = await requireRole(ADMIN_ROLES);
+  if (membership.role !== "owner") redirect("/admin/pagos");
+  return recordActivity(membership, session.user.name, "Configurar calendario de cuotas", formData, async () => {
+    const generationDay = Number(formData.get("generationDay"));
+    const rawDueDay = String(formData.get("dueDay") ?? "").trim();
+    const dueDay = rawDueDay === "" ? null : Number(rawDueDay);
+    if (!Number.isInteger(generationDay) || generationDay < 1 || generationDay > 28) {
+      return { error: "El día de generación debe estar entre 1 y 28." };
+    }
+    if (dueDay !== null && (!Number.isInteger(dueDay) || dueDay < generationDay || dueDay > 28)) {
+      return { error: "El vencimiento debe ser igual o posterior al día de generación y hasta el día 28." };
+    }
+
+    await db.update(schools)
+      .set({ paymentGenerationDay: generationDay, paymentDueDay: dueDay })
+      .where(eq(schools.id, membership.schoolId));
+    await refreshScholarships(membership.schoolId);
+    revalidatePath("/admin/cuotas");
+    return { ok: true };
   });
 }
 
@@ -172,11 +179,9 @@ export async function deletePlan(formData: FormData) {
   if (id) {
     await tenantDb(membership.schoolId).plans.deleteById(id);
   }
-  revalidatePath("/admin/pagos");
+  revalidatePath("/admin/cuotas");
   });
 }
-
-const periodRe = /^[1-9]\d{3}-(0[1-9]|1[0-2])$/;
 
 export async function generateCharges(
   _prev: FormState,
@@ -185,16 +190,14 @@ export async function generateCharges(
   const { membership, session } = await requireRole(["owner"]);
   return recordActivity(membership, session.user.name, "Generar cuotas mensuales", formData, async () => {
   const period = String(formData.get("period") ?? "");
-  if (!periodRe.test(period)) {
+  if (!isBillingPeriod(period)) {
     return { error: "Elige un mes válido" };
   }
 
   await generateMonthlyCharges(membership.schoolId, period);
-  // Cobra automáticamente a los alumnos con tarjeta guardada (autopago).
-  await chargeAutopayForPeriod(membership.schoolId, period);
   revalidatePath("/admin/pagos");
   revalidatePath("/admin/finanzas");
-  return { ok: true };
+  return { ok: true, period };
   });
 }
 

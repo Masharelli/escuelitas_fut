@@ -23,9 +23,9 @@ export async function GET(request: Request) {
   let failures = 0;
   for (const school of academies) {
     try {
-      monthly += await generateMonthlyCharges(school.id, period, today);
+      monthly += await generateMonthlyCharges(school.id, period, today, undefined, "scheduled");
       renewals += await generateAnnualRenewals(school.id, today);
-      await chargeAutopayForPeriod(school.id, period);
+      await chargeAutopayForPeriod(school.id, period, today);
     } catch (error) {
       failures += 1;
       console.error("Error al procesar cobros de la escuela", school.id, error instanceof Error ? error.name : typeof error);

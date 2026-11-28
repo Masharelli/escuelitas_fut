@@ -1,0 +1,184 @@
+.admin {
+  --select-surface: var(--color-surface-container);
+  --select-border: #a8bcaa;
+  --select-active: var(--color-primary-container);
+}
+
+.admin select {
+  min-height: 3rem;
+  border: 1px solid var(--select-border);
+  border-radius: .75rem;
+  color: var(--color-ink);
+  background-color: var(--select-surface);
+  box-shadow: none;
+}
+
+.admin select:not([multiple], [size]) {
+  appearance: none;
+  padding: .6rem 2.4rem .6rem .85rem;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 48%, var(--color-pitch) 52%),
+    linear-gradient(135deg, var(--color-pitch) 48%, transparent 52%);
+  background-repeat: no-repeat;
+  background-position: right 1.25rem center, right .9rem center;
+  background-size: .35rem .35rem;
+}
+
+.admin select[name="schoolId"] + svg { display: none; }
+
+.admin select:hover:not(:disabled) { border-color: var(--color-pitch); }
+.admin select:disabled { opacity: .6; cursor: not-allowed; }
+
+.admin select:focus-visible,
+.filterGroup input:focus-visible {
+  outline: 2px solid var(--color-pitch);
+  outline-offset: -2px;
+}
+
+.filterGroup {
+  display: grid;
+  flex: 1 1 23rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 1px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--select-border);
+  border-radius: .9rem;
+  background: var(--select-border);
+}
+
+.filterGroupWithSearch {
+  flex-basis: 100%;
+}
+
+.filterSearch {
+  position: relative;
+  grid-column: 1 / -1;
+  min-width: 0;
+  background-color: var(--color-surface);
+}
+
+.filterSearch > input {
+  width: 100%;
+  min-height: 3rem;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+@container (width >= 52rem) {
+  .filterGroupWithSearch {
+    grid-template-columns: minmax(16rem, 1.35fr) repeat(3, minmax(0, 1fr));
+  }
+
+  .filterSearch {
+    grid-column: auto;
+  }
+}
+
+.filterSegment {
+  position: relative;
+  min-width: 0;
+  background: var(--select-surface);
+}
+
+.filterSegment[data-active] { background: var(--select-active); }
+
+.filterIcon {
+  position: absolute;
+  z-index: 1;
+  inset-inline-start: .78rem;
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  color: var(--color-pitch);
+  pointer-events: none;
+}
+
+.admin select[data-filter-field],
+.filterSegment input[type="month"] {
+  width: 100%;
+  min-height: 3rem;
+  border: 0;
+  border-radius: 0;
+  color: var(--color-ink);
+  background-color: transparent;
+  font-size: 1rem;
+  font-weight: 550;
+}
+
+.admin select[data-filter-field] { padding-inline-start: 2.3rem; }
+.filterSegment input[type="month"] { padding: .6rem .85rem; }
+
+.filterSegment[data-active] > select,
+.filterSegment[data-active] > input { color: var(--color-on-primary-container); font-weight: 650; }
+
+@media (width >= 40rem) {
+  .admin select[data-filter-field],
+  .filterSegment input[type="month"] { font-size: .9rem; }
+}
+
+@media (width < 40rem) {
+  .admin select { font-size: 1rem; }
+  .filterGroup { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  @supports (appearance: base-select) and selector(::picker(select)) {
+    .admin select:not([multiple], [size]) {
+      appearance: base-select;
+      gap: .5rem;
+      padding-inline-end: .9rem;
+      background-image: none;
+    }
+
+    .admin select:not([multiple], [size])::picker(select) {
+      appearance: base-select;
+      max-inline-size: min(26rem, calc(100vw - 2rem));
+      max-block-size: min(20rem, 50dvh);
+      margin-block: .35rem;
+      padding: .3rem;
+      border: 1px solid var(--color-outline-variant);
+      border-radius: .9rem;
+      color: var(--color-ink);
+      background: var(--color-surface);
+      box-shadow: 0 .65rem 1.4rem rgb(24 77 51 / 15%);
+    }
+
+    .admin select::picker-icon {
+      flex: 0 0 .48rem;
+      align-self: center;
+      width: .48rem;
+      height: .48rem;
+      border: solid var(--color-pitch);
+      border-width: 0 1.75px 1.75px 0;
+      rotate: 45deg;
+      content: "";
+    }
+
+    .admin select:open::picker-icon { rotate: 225deg; }
+
+    .admin select:not([multiple], [size]) option {
+      min-height: 2.55rem;
+      gap: .75rem;
+      padding: .5rem .65rem;
+      border-radius: .5rem;
+      white-space: normal;
+      cursor: pointer;
+    }
+
+    .admin select:not([multiple], [size]) option:checked {
+      color: var(--color-on-primary-container);
+      background: var(--select-active);
+    }
+
+    .admin select:not([multiple], [size]) option:is(:hover, :focus-visible):not(:disabled) {
+      outline: 1px solid var(--color-pitch);
+      outline-offset: -1px;
+    }
+
+    .admin option::checkmark { order: 1; margin-inline-start: auto; color: var(--color-pitch); }
+    .admin select:not([multiple], [size]) option:disabled { opacity: .55; cursor: not-allowed; }
+  }
+}

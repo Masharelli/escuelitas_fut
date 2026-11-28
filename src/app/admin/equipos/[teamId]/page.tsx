@@ -21,7 +21,7 @@ import { getTeamCoaches } from "@/lib/coach";
 import { getTeamGuardianUsers } from "@/lib/guardians";
 import { TeamNoticeForm } from "@/app/coach/equipos/[teamId]/notice-form";
 import { getTeamStaffInvitations } from "@/lib/staff-invitations";
-import { PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
+import { AddButtonLabel, PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
 import { StudentList } from "@/components/student-list";
 import { CoachAssign } from "./coach-assign";
 
@@ -101,7 +101,7 @@ export default async function EquipoDetallePage({
             ? `${students.length} alumno${students.length === 1 ? "" : "s"} en este equipo.`
             : "Este equipo aún no tiene alumnos."
         }
-        action={<PrimaryLink href={nuevoHref}>Agregar alumno</PrimaryLink>}
+        action={<PrimaryLink href={nuevoHref}><AddButtonLabel>Agregar alumno</AddButtonLabel></PrimaryLink>}
       />
 
       <div className="mb-5 flex flex-wrap gap-2">
@@ -196,7 +196,7 @@ export default async function EquipoDetallePage({
         <EmptyState
           title="Sin alumnos en este equipo"
           description="Agrega alumnos a este equipo; quedarán asignados automáticamente."
-          action={<PrimaryLink href={nuevoHref}>Agregar alumno</PrimaryLink>}
+          action={<PrimaryLink href={nuevoHref}><AddButtonLabel>Agregar alumno</AddButtonLabel></PrimaryLink>}
         />
       ) : (
         <StudentList canDelete={membership.role === "owner"} students={students} showBadges={false} />

@@ -11,10 +11,10 @@ import {
   TRAFFIC_LIGHT_LABELS,
   type TrafficLight,
 } from "@/lib/billing";
-import { PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
-import { StudentList } from "@/components/student-list";
+import { AddButtonLabel, PageHeader, EmptyState, PrimaryLink } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
 import { getFormOptions } from "./options";
+import { StudentDirectory } from "./student-directory";
 
 const isLight = (v: string | undefined): v is TrafficLight =>
   v === "green" || v === "yellow" || v === "red";
@@ -57,14 +57,23 @@ export default async function AlumnosPage({
     orderBy: [asc(studentsTable.lastName), asc(studentsTable.firstName)],
   });
 
-  // Semáforo de pagos por alumno (punto de color + filtro "pago").
+  // Semáforo de pagos para la ficha rápida y el filtro por estado.
   const [lights, scholarships] = await Promise.all([
     paymentTrafficLights(schoolId, found.map((student) => student.id)),
     activeDiscountsByStudent(schoolId),
   ]);
   const students = found
-    .map((s) => ({ ...s, light: lights.get(s.id), scholarships: scholarships.get(s.id)?.map(scholarshipLabel) }))
-    .filter((s) => !isLight(pago) || s.light === pago);
+    .filter((student) => !isLight(pago) || lights.get(student.id) === pago)
+    .map(({ id, firstName, lastName, photoUrl, guardianName, guardianPhone, category, team }) => {
+      const light = lights.get(id);
+      return {
+        id, firstName, lastName, photoUrl, guardianName, guardianPhone,
+        category: category?.name,
+        team: team?.name,
+        payment: light && { tone: light, label: TRAFFIC_LIGHT_LABELS[light] },
+        scholarships: scholarships.get(id)?.map(scholarshipLabel) ?? [],
+      };
+    });
 
   const { categories, teams } = await getFormOptions(schoolId);
 
@@ -81,7 +90,7 @@ export default async function AlumnosPage({
         action={
           total > 0 ? (
             <PrimaryLink href="/admin/alumnos/nuevo">
-              <PlusIcon /> Nuevo alumno
+              <AddButtonLabel>Nuevo alumno</AddButtonLabel>
             </PrimaryLink>
           ) : undefined
         }
@@ -104,20 +113,22 @@ export default async function AlumnosPage({
           description="Da de alta a tu primer alumno con sus datos, categoría y la información de su tutor."
           action={
             <PrimaryLink href="/admin/alumnos/nuevo">
-              <PlusIcon /> Registrar alumno
+              <AddButtonLabel>Registrar alumno</AddButtonLabel>
             </PrimaryLink>
           }
         />
       ) : (
         <>
           <FilterBar
-            search={{ key: "q", placeholder: "Buscar por nombre o apellido…" }}
+            search={{ key: "q", placeholder: "Buscar por nombre o apellido…", grouped: true }}
             selects={[
-              { key: "cat", allLabel: "Todas las categorías", options: categories },
-              { key: "team", allLabel: "Todos los equipos", options: teams },
+              { key: "cat", label: "Filtrar por categoría", allLabel: "Todas las categorías", icon: "students", options: categories },
+              { key: "team", label: "Filtrar por equipo", allLabel: "Todos los equipos", icon: "teams", options: teams },
               {
                 key: "pago",
+                label: "Filtrar por estado de pago",
                 allLabel: "Pagos: todos",
+                icon: "payments",
                 options: (["green", "yellow", "red"] as const).map((l) => ({
                   value: l,
                   label:
@@ -132,18 +143,10 @@ export default async function AlumnosPage({
               No encontramos alumnos con esos filtros.
             </p>
           ) : (
-            <StudentList canDelete={membership.role === "owner"} students={students} />
+            <StudentDirectory canDelete={membership.role === "owner"} students={students} />
           )}
         </>
       )}
     </div>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
   );
 }

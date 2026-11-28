@@ -19,6 +19,7 @@ export function PortalShell({
   schools,
   activeSchoolId,
   notifications,
+  className = "",
   children,
 }: {
   schoolName: string;
@@ -31,11 +32,12 @@ export function PortalShell({
   activeSchoolId?: string;
   /** Campana de avisos: ruta de la lista y número de no leídos. */
   notifications?: { href: string; unread: number };
+  className?: string;
   children: React.ReactNode;
 }) {
   const canSwitch = !!schools && schools.length > 1 && !!activeSchoolId;
   return (
-    <div className="flex w-full min-w-0 flex-1 bg-chalk text-ink" data-bottom-nav={bottomNav ? "" : undefined}>
+    <div className={`flex w-full min-w-0 flex-1 bg-chalk text-ink ${className}`} data-bottom-nav={bottomNav ? "" : undefined}>
       {/* Menú lateral (escritorio) */}
       <aside className="sticky top-0 hidden h-dvh shrink-0 flex-col self-start border-r border-outline-variant bg-surface-container p-4 lg:flex lg:w-60 xl:w-66">
         <div className="flex shrink-0 items-center justify-between gap-1 px-1">

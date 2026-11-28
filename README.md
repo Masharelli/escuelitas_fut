@@ -180,8 +180,14 @@ En Producción de Vercel define `CRON_SECRET` con un valor aleatorio de al
 menos 16 caracteres. Aplica `npm run db:migrate` antes de desplegar. Vercel
 invoca `/api/cron/billing` a diario a partir de las 00:00 de Ciudad de México.
 
-- En **Pagos**, configura un plan mensual general para cubrir a todos los
+- En **Cuotas y planes**, configura un plan mensual general para cubrir a todos los
   alumnos activos. Los planes de categoría tienen prioridad sobre el general.
+- El calendario permite elegir el día de generación (1–28, inicialmente 1) y
+  un vencimiento opcional igual o posterior. La revisión diaria crea las cuotas
+  que falten desde el día elegido, dentro del mes en curso. La generación
+  manual crea los cargos del mes elegido y deja el autopago a la tarea diaria.
+- El autopago autorizado intenta las cuotas pendientes al vencer. Si una cuota
+  no tiene fecha de vencimiento, se puede intentar desde el día de generación.
 - Para cada plan de inscripción anual que corresponda, activa **Renovar cada
   año**. Se genera un cargo en el aniversario de la fecha de inscripción de cada
   alumno, desde el día en que activaste el plan. Para un 29 de febrero se usa
@@ -189,8 +195,9 @@ invoca `/api/cron/billing` a diario a partir de las 00:00 de Ciudad de México.
 - En **Becas** y en la ficha del alumno puedes asignar el descuento. El
   vencimiento general marca la mensualidad como atrasada, pero la beca se
   conserva si el alumno no tiene una fecha límite de beca. Si configuras esa
-  fecha en su ficha, las becas parciales vencen después de ese día. Una beca que
-  cubre la cuota entera se registra como cubierta.
+  fecha en su ficha, las becas parciales vencen después de ese día o después
+  del día de generación cuando este es posterior. Una beca que cubre la cuota
+  entera se registra como cubierta.
 
 Si la escuela usa Stripe Connect, el webhook de cuentas conectadas recibe
 `checkout.session.completed`, `checkout.session.async_payment_succeeded` y

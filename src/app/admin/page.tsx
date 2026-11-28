@@ -2,7 +2,7 @@ import Link from "next/link";
 import { and, count, eq, gte } from "drizzle-orm";
 
 import { PortalIcon, type NavIcon } from "@/components/portal/portal-icon";
-import { PrimaryLink } from "@/components/ui";
+import { AddButtonLabel, PrimaryLink } from "@/components/ui";
 import { db } from "@/db";
 import { leagueTeams, matches, seasons, students, teams } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
@@ -48,7 +48,7 @@ export default async function AdminHomePage() {
     <Dashboard
       title={title}
       schoolName={membership.school.name}
-      action={{ href: "/admin/alumnos/nuevo", label: "Registrar alumno" }}
+      action={{ href: "/admin/alumnos/nuevo", label: "Registrar alumno", add: true }}
       stats={[
         { icon: "students", label: "Alumnos", href: "/admin/alumnos", value: studentCount.value },
         { icon: "teams", label: "Equipos", href: "/admin/equipos", value: teamCount.value },
@@ -57,7 +57,7 @@ export default async function AdminHomePage() {
       shortcuts={[
         { icon: "payments", label: "Revisar pagos", href: "/admin/pagos" },
         { icon: "calendar", label: "Abrir calendario", href: "/admin/calendario" },
-        { icon: "attendance", label: "Consultar asistencias", href: "/admin/asistencias" },
+        { icon: "attendance", label: "Programar entrenamiento", href: "/admin/asistencias#programar-entrenamiento" },
       ]}
     />
   );
@@ -72,7 +72,7 @@ function Dashboard({
 }: {
   title: string;
   schoolName: string;
-  action: { href: string; label: string };
+  action: { href: string; label: string; add?: boolean };
   stats: (DashboardLink & { value: number })[];
   shortcuts?: DashboardLink[];
 }) {
@@ -87,7 +87,9 @@ function Dashboard({
             </h1>
           </div>
           <div className="min-w-0 sm:shrink-0">
-            <PrimaryLink href={action.href}>{action.label} <span aria-hidden="true">→</span></PrimaryLink>
+            <PrimaryLink href={action.href}>
+              {action.add ? <AddButtonLabel>{action.label}</AddButtonLabel> : <>{action.label} <span aria-hidden="true">→</span></>}
+            </PrimaryLink>
           </div>
         </div>
       </header>

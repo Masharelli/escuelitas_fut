@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 
 import { Card } from "@/components/ui";
 import { deleteStudent } from "@/app/admin/alumnos/actions";
 import { TRAFFIC_LIGHT_LABELS, type TrafficLight } from "@/lib/billing";
+import { StudentAvatar } from "@/components/student-avatar";
 
 export type StudentRow = {
   id: string;
@@ -45,7 +45,7 @@ export function StudentList({
             <div
               className="flex w-full min-w-0 flex-1 items-start gap-3 sm:w-auto sm:gap-4"
             >
-              <Avatar name={s.firstName} photoUrl={s.photoUrl} />
+              <StudentAvatar name={s.firstName} photoUrl={s.photoUrl} />
               <div className="min-w-0 flex-1">
                 <p className="flex items-start gap-2 font-semibold leading-snug text-ink">
                   {readOnly ? <span>{s.firstName} {s.lastName}</span> : <Link href={`/admin/alumnos/${s.id}`} className="hover:text-pitch">{s.firstName} {s.lastName}</Link>}
@@ -108,26 +108,6 @@ export function StudentList({
         ))}
       </ul>
     </Card>
-  );
-}
-
-function Avatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
-  if (photoUrl) {
-    return (
-      <Image
-        src={photoUrl}
-        alt={name}
-        width={44}
-        height={44}
-        unoptimized
-        className="h-11 w-11 shrink-0 rounded-full border border-ink/10 object-cover"
-      />
-    );
-  }
-  return (
-    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-pitch/10 font-semibold text-pitch">
-      {name.trim().charAt(0).toUpperCase() || "?"}
-    </span>
   );
 }
 

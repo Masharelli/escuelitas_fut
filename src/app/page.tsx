@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -10,7 +10,12 @@ import { PublicHeader } from "@/components/brand/public-header";
 import { EntranceGroup } from "@/components/marketing/entrance-group";
 import { FeatureOverview } from "@/components/marketing/feature-overview";
 import trainingPhoto from "../../public/entrenamiento-estadio.webp";
+import mobileTrainingPhoto from "../../public/entrenamiento-estadio-mobile.webp";
 import styles from "@/components/marketing/landing.module.css";
+
+const mobileHeroMedia = "(width < 800px) and (aspect-ratio < 4/5)";
+const wideHeroMedia = "(min-width: 800px), (min-aspect-ratio: 4/5)";
+const heroAlt = "Un entrenador acompaña a dos niños que juegan futbol en una cancha iluminada al anochecer";
 
 export default async function HomePage() {
   const session = await auth();
@@ -29,20 +34,26 @@ export default async function HomePage() {
     redirect(hasAdmin ? "/admin" : isCoach ? "/coach" : "/padres");
   }
 
+  const { props: wideHero } = getImageProps({
+    src: trainingPhoto,
+    alt: heroAlt,
+    fill: true,
+    preload: true,
+    sizes: "(width < 800px) max(100vw, 178svh), 100vw",
+    className: styles.heroImage,
+  });
   return (
     <main className={styles.site}>
       <PublicHeader />
       <section aria-labelledby="portada-titulo" className={styles.heroSection}>
         <div className={styles.hero}>
           <div className={styles.photo}>
-            <Image
-              src={trainingPhoto}
-              alt="Un entrenador acompaña a dos niños que juegan futbol en una cancha iluminada al anochecer"
-              fill
-              preload
-              sizes="(width < 800px) max(100vw, 178svh), 100vw"
-              className={styles.heroImage}
-            />
+            <link rel="preload" as="image" media={wideHeroMedia} imageSrcSet={wideHero.srcSet} imageSizes={wideHero.sizes} />
+            <link rel="preload" as="image" media={mobileHeroMedia} href={mobileTrainingPhoto.src} fetchPriority="high" />
+            <picture>
+              <source media={mobileHeroMedia} srcSet={mobileTrainingPhoto.src} />
+              <img {...wideHero} alt={heroAlt} />
+            </picture>
           </div>
           <div className={styles.heroContent}>
             <div className={styles.copy}>

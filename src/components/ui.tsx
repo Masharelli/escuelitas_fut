@@ -75,7 +75,21 @@ export function EmptyState({
   );
 }
 
-/** Botón-enlace primario (verde pasto). */
+/** Etiqueta para acciones de alta con el icono en su propio segmento. */
+export function AddButtonLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <span data-button-icon aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      </span>
+      <span data-button-label>{children}</span>
+    </>
+  );
+}
+
+/** Botón-enlace primario. */
 export function PrimaryLink({
   href,
   children,

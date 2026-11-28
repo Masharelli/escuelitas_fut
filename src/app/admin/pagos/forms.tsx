@@ -1,12 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 import {
   createPlan,
   createOneOffCharge,
   createDiscount,
   generateCharges,
+  setPaymentSchedule,
   type FormState,
 } from "./actions";
 import { TextField, SelectField, TextareaField } from "@/components/form/fields";
@@ -127,6 +129,49 @@ export function CreateDiscountForm({ discount }: { discount?: { id: string; name
   );
 }
 
+export function BillingScheduleForm({ generationDay, dueDay }: { generationDay: number; dueDay: number | null }) {
+  const [state, action] = useActionState<FormState, FormData>(setPaymentSchedule, undefined);
+  const [generation, setGeneration] = useState(String(generationDay));
+  const [due, setDue] = useState(dueDay === null ? "" : String(dueDay));
+
+  return (
+    <form action={action} className="mt-3 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <label className="min-w-0 text-sm font-medium">
+          <span className="mb-1 block">Día de generación</span>
+          <input
+            type="number"
+            name="generationDay"
+            min={1}
+            max={28}
+            required
+            value={generation}
+            onChange={(event) => setGeneration(event.currentTarget.value)}
+            className="md-field"
+          />
+        </label>
+        <label className="min-w-0 text-sm font-medium">
+          <span className="mb-1 block">Día de vencimiento</span>
+          <input
+            type="number"
+            name="dueDay"
+            min={Number(generation) || 1}
+            max={28}
+            value={due}
+            onChange={(event) => setDue(event.currentTarget.value)}
+            className="md-field"
+          />
+        </label>
+      </div>
+      <p className="text-sm text-ink-soft">Al generarse la cuota, se avisa a la familia. Si autorizó el autopago, se intenta al vencimiento de su cuota. Si la cuota no tiene vencimiento, se intenta desde el día de generación.</p>
+      <p className="text-xs text-ink-soft">Días del 1 al 28. Deja el vencimiento vacío si tus cuotas no tienen fecha límite.</p>
+      <ErrorMsg state={state} />
+      {state?.ok && <p role="status" className="text-sm text-pitch">Calendario guardado.</p>}
+      <SubmitButton inline>Guardar calendario</SubmitButton>
+    </form>
+  );
+}
+
 export function GenerateChargesForm({ currentPeriod }: { currentPeriod: string }) {
   const [state, action] = useActionState<FormState, FormData>(
     generateCharges,
@@ -144,8 +189,10 @@ export function GenerateChargesForm({ currentPeriod }: { currentPeriod: string }
           className="w-full rounded-xl border border-ink/15 bg-white px-3.5 py-2.5 text-ink shadow-sm outline-none transition focus:border-pitch focus:ring-2 focus:ring-pitch/20"
         />
       </label>
-      {state?.ok && (
-        <p className="text-sm text-pitch">Cuotas generadas. Revisa la lista abajo.</p>
+      {state?.ok && state.period && (
+        <p role="status" className="text-sm text-pitch">
+          Cuotas generadas. <Link href={`/admin/pagos?mes=${state.period}`} className="font-semibold underline underline-offset-4">Ver cargos del mes</Link>
+        </p>
       )}
       <ErrorMsg state={state} />
       <SubmitButton>Generar cuotas del mes</SubmitButton>
@@ -208,6 +255,7 @@ export function CreateOneOffChargeForm({
       )}
       {target === "student" && <StudentCombobox students={students} />}
       <ErrorMsg state={state} />
+      {state?.ok && <p role="status" className="text-sm text-pitch">Cobro creado en el mes actual.</p>}
       <SubmitButton>Crear cobro</SubmitButton>
     </form>
   );

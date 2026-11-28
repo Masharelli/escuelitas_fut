@@ -78,7 +78,7 @@ export default async function PadresPagosPage({
         <section className="mb-8">
           <h2 className="mb-1 font-display text-lg font-bold">Pago automático</h2>
           <p className="mb-3 text-sm text-ink-soft">
-            Guarda una tarjeta y la mensualidad de cada hijo se cobrará sola.
+            Guarda una tarjeta para intentar el pago automático al vencer la mensualidad. Si la cuota no tiene vencimiento, se intenta desde el día de generación.
           </p>
           <ul className="space-y-2">
             {children.map((c) => {

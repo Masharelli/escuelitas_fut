@@ -1,9 +1,10 @@
 import Stripe from "stripe";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, lte, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import { schools, charges, guardianships, autopay } from "@/db/schema";
 import { notifyChargePaidById, recordStripeChargePayment } from "@/lib/billing";
+import { billingDate, hasReachedBillingDay } from "@/lib/billing-rules";
 
 let client: Stripe | null = null;
 
@@ -161,21 +162,21 @@ export async function confirmAutopaySetup(
 }
 
 /**
- * Cobra off-session las cuotas mensuales PENDIENTES de un periodo a los alumnos
- * con autopago activo. Si la tarjeta es rechazada o requiere autenticación, el
- * cargo se queda pendiente (el papá puede pagarlo manualmente). Devuelve cuántos
- * se cobraron.
+ * Intenta el autopago de cuotas pendientes del mes a partir de su vencimiento.
+ * Las cuotas sin vencimiento se intentan desde el día de generación.
  */
 export async function chargeAutopayForPeriod(
   schoolId: string,
-  period: string
+  period: string,
+  today = billingDate(),
 ): Promise<number> {
+  if (period !== today.slice(0, 7)) return 0;
   const school = await db.query.schools.findFirst({
     where: eq(schools.id, schoolId),
   });
   if (!school?.stripeAccountId || !school.stripeChargesEnabled) return 0;
-  const acct = { stripeAccount: school.stripeAccountId };
-  const stripe = getStripe();
+  if (!hasReachedBillingDay(today, school.paymentGenerationDay)) return 0;
+  const due = or(isNull(charges.dueDate), lte(charges.dueDate, today));
 
   const rows = await db
     .select({
@@ -191,20 +192,24 @@ export async function chargeAutopayForPeriod(
         eq(charges.periodMonth, period),
         eq(charges.status, "pending"),
         gt(charges.amountCents, 0),
+        due,
         isNull(charges.stripeCheckoutId),
         isNull(charges.autopayAttemptedAt),
         eq(autopay.schoolId, schoolId),
         eq(autopay.status, "active")
       )
     );
+  if (!rows.length) return 0;
 
+  const acct = { stripeAccount: school.stripeAccountId };
+  const stripe = getStripe();
   let charged = 0;
   for (const r of rows) {
     if (!r.pm) continue;
     const paid = await db.transaction(async (tx) => {
       const [charge] = await tx.select().from(charges)
         .where(and(eq(charges.id, r.chargeId), eq(charges.status, "pending"),
-          isNull(charges.stripeCheckoutId), isNull(charges.autopayAttemptedAt)))
+          due, isNull(charges.stripeCheckoutId), isNull(charges.autopayAttemptedAt)))
         .for("update");
       if (!charge || charge.amountCents <= 0 || !r.pm) return false;
       const setup = await tx.query.autopay.findFirst({

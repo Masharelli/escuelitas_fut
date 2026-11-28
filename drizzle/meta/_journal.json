@@ -190,6 +190,13 @@
       "when": 1795470292237,
       "tag": "0026_staff_dual_access",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1795859106135,
+      "tag": "0027_monthly_billing_schedule",
+      "breakpoints": true
     }
   ]
 }

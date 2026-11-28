@@ -5,9 +5,10 @@ import {
   integer,
   boolean,
   pgEnum,
+  check,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { users } from "./auth";
 
 /**
@@ -72,6 +73,8 @@ export const schools = pgTable("schools", {
   address: text("address"),
   city: text("city"),
   primaryColor: text("primary_color"),
+  // Día del mes (1-28) a partir del cual se generan las cuotas automáticamente.
+  paymentGenerationDay: integer("payment_generation_day").notNull().default(1),
   // Día del mes en que vencen las cuotas mensuales (1-28). Null = sin vencimiento.
   paymentDueDay: integer("payment_due_day"),
   // Cuenta conectada de Stripe (Stripe Connect Express) — Fase 3 (pagos).
@@ -84,7 +87,9 @@ export const schools = pgTable("schools", {
     .notNull()
     .default(false),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
-});
+}, (t) => [
+  check("schools_payment_generation_day_check", sql`${t.paymentGenerationDay} between 1 and 28`),
+]);
 
 /** Relación usuario ↔ escuela con un rol. Un usuario puede pertenecer a varias. */
 export const memberships = pgTable(

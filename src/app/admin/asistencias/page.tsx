@@ -13,7 +13,7 @@ import {
   countsAsPresent,
   type SessionKind,
 } from "@/lib/attendance";
-import { PageHeader, Card } from "@/components/ui";
+import { PageHeader, Card, SecondaryLink } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
 import { CreateSessionForm } from "./forms";
 
@@ -54,8 +54,7 @@ export default async function AsistenciasPage({
   return (
     <div className="mx-auto w-full max-w-5xl">
       <PageHeader
-        eyebrow="Asistencias"
-        title="Asistencias"
+        title="Entrenamientos y asistencias"
         subtitle="Programa entrenamientos y eventos, y toma el pase de lista."
       />
 
@@ -63,14 +62,14 @@ export default async function AsistenciasPage({
         <div className="order-2 min-w-0 xl:order-1">
           <FilterBar
             selects={[
-              { key: "equipo", allLabel: "Todos los equipos", options: teamOptions },
-              { key: "tipo", allLabel: "Todos los tipos", options: kindOptions },
+              { key: "equipo", label: "Filtrar por equipo", allLabel: "Todos los equipos", icon: "teams", options: teamOptions },
+              { key: "tipo", label: "Filtrar por tipo", allLabel: "Todos los tipos", icon: "calendar", options: kindOptions },
             ]}
           />
           <h2 className="font-display text-lg font-bold">Próximas</h2>
           {upcoming.length === 0 ? (
             <p className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">
-              No hay sesiones programadas. Crea una aquí al lado.
+              No hay sesiones en esta vista. Usa el formulario para programar un entrenamiento o evento.
             </p>
           ) : (
             <ul className="mt-3 space-y-2">
@@ -94,12 +93,24 @@ export default async function AsistenciasPage({
           )}
         </div>
 
-        <div className="order-1 min-w-0 xl:order-2">
+        <section
+          id="programar-entrenamiento"
+          tabIndex={-1}
+          aria-labelledby="programar-entrenamiento-titulo"
+          className="order-1 min-w-0 scroll-mt-24 focus-visible:outline-pitch xl:order-2"
+        >
           <Card>
-            <p className="mb-3 text-sm font-semibold text-ink">Nueva sesión</p>
-            <CreateSessionForm teams={teamOptions} />
+            <h2 id="programar-entrenamiento-titulo" className="mb-3 font-display text-lg font-bold text-ink">Programar entrenamiento</h2>
+            {teamOptions.length > 0 ? (
+              <CreateSessionForm teams={teamOptions} />
+            ) : (
+              <>
+                <p className="mb-3 text-sm text-ink-soft">Crea un equipo para poder programar su primer entrenamiento.</p>
+                <SecondaryLink href="/admin/equipos">Ir a Equipos</SecondaryLink>
+              </>
+            )}
           </Card>
-        </div>
+        </section>
       </div>
     </div>
   );

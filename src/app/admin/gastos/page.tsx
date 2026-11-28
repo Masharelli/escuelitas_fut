@@ -81,7 +81,9 @@ export default async function GastosPage({
               selects={[
                 {
                   key: "tipo",
+                  label: "Filtrar por categoría de gasto",
                   allLabel: "Todas las categorías",
+                  icon: "finance",
                   options: EXPENSE_CATEGORY_OPTIONS,
                 },
               ]}

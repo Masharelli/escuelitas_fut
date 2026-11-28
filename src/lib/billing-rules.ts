@@ -13,6 +13,14 @@ export function billingDate(now = new Date()): string {
   return schoolDates.format(now);
 }
 
+export function isBillingPeriod(value: unknown): value is string {
+  return typeof value === "string" && /^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+export function hasReachedBillingDay(today: string, day: number): boolean {
+  return Number(today.slice(8, 10)) >= day;
+}
+
 function dateInMonth(period: string, day: number) {
   const [year, month] = period.split("-").map(Number);
   const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -33,7 +41,7 @@ export function applyDiscount(amountCents: number, discount: DiscountRow): numbe
 }
 
 export function monthlyQuote({
-  baseAmountCents, discounts, period, today, schoolDay, scholarshipDay,
+  baseAmountCents, discounts, period, today, schoolDay, scholarshipDay, generationDay = 1,
 }: {
   baseAmountCents: number;
   discounts: DiscountRow[] | undefined;
@@ -41,11 +49,12 @@ export function monthlyQuote({
   today: string;
   schoolDay: number | null;
   scholarshipDay: number | null;
+  generationDay?: number;
 }) {
   let amountCents = baseAmountCents;
   let scholarshipName: string | null = null;
   const scholarshipDeadline = discounts?.length && scholarshipDay
-    ? dateInMonth(period, scholarshipDay)
+    ? dateInMonth(period, Math.max(scholarshipDay, generationDay))
     : null;
   const dueDate = scholarshipDeadline ?? (schoolDay ? dateInMonth(period, schoolDay) : null);
   for (const discount of discounts ?? []) {

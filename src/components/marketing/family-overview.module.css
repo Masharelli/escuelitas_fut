@@ -216,6 +216,16 @@
 
 .callout { display: none; }
 
+@media (width < 800px) {
+  .phoneProfile p,
+  .infoRow { font-size: .875rem; }
+
+  .phoneNav { grid-template-columns: repeat(3, auto); }
+  .phoneNav button { font-size: .8125rem; white-space: nowrap; }
+  .infoRow { padding-block: .72rem; }
+  .infoRow p:first-child { font-size: .9375rem; }
+}
+
 @media (width >= 52rem) {
   .entrance { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(1rem, 2.2vw, 2rem); }
 }

@@ -1,40 +1,45 @@
-import { asc, desc, eq } from "drizzle-orm";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { and, asc, desc, eq, gte, isNull, lt, or } from "drizzle-orm";
 
-import { db } from "@/db";
+import { charges as chargesTable, categories as categoriesTable, students as studentsTable } from "@/db/schema";
 import { requireRole, ADMIN_ROLES } from "@/lib/tenant";
 import { tenantDb } from "@/lib/tenant-db";
-import { refreshConnectStatus } from "@/lib/stripe";
-import {
-  charges as chargesTable,
-  categories as categoriesTable,
-  plans as plansTable,
-  students as studentsTable,
-  schools,
-} from "@/db/schema";
 import {
   formatMoney,
+  formatDueDate,
   periodLabel,
   currentPeriod,
-  effectiveMonth,
   isOverdue,
   KIND_LABELS,
   CHARGE_STATUS_LABELS,
   type ChargeKind,
 } from "@/lib/billing";
-import { PageHeader, Card } from "@/components/ui";
+import { isBillingPeriod } from "@/lib/billing-rules";
+import { addMonths } from "@/lib/calendar";
+import { PageHeader, EmptyState } from "@/components/ui";
 import { FilterBar } from "@/components/filter-bar";
-import {
-  CreatePlanForm,
-  GenerateChargesForm,
-  CreateOneOffChargeForm,
-} from "./forms";
-import {
-  deletePlan,
-  markChargePaid,
-  cancelCharge,
-  connectStripe,
-  setPaymentDueDay,
-} from "./actions";
+import { PortalIcon } from "@/components/portal/portal-icon";
+import { CobroDialog, PaymentMonthField } from "./payment-controls";
+import { markChargePaid, cancelCharge } from "./actions";
+
+const CHARGE_GROUPS = {
+  vencido: { title: "Vencidos", tone: "bg-red-50", dot: "bg-red-600", expanded: true },
+  pending: { title: "Pendientes", tone: "bg-tertiary-container/60", dot: "bg-amber-600", expanded: true },
+  paid: { title: "Pagados", tone: "bg-primary-container/65", dot: "bg-pitch", expanded: false },
+  canceled: { title: "Cancelados", tone: "bg-surface-container", dot: "bg-outline", expanded: false },
+  refunded: { title: "Reembolsados", tone: "bg-surface-container", dot: "bg-outline", expanded: false },
+  failed: { title: "Fallidos", tone: "bg-red-50", dot: "bg-red-600", expanded: false },
+} as const;
+
+type GroupStatus = keyof typeof CHARGE_GROUPS;
+type ListedCharge = Pick<typeof chargesTable.$inferSelect, "id" | "status" | "description" | "amountCents" | "currency" | "dueDate"> & {
+  student: { firstName: string; lastName: string };
+};
+
+function monthParam(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
 
 export default async function AdminPagosPage({
   searchParams,
@@ -47,265 +52,202 @@ export default async function AdminPagosPage({
     alumno?: string;
   }>;
 }) {
-  const { connected, mes, estado, tipo, alumno } = await searchParams;
-  const { membership } = await requireRole(ADMIN_ROLES);
-  const tdb = tenantDb(membership.schoolId);
+  const [{ connected, mes, estado, tipo, alumno }, { membership }] = await Promise.all([
+    searchParams,
+    requireRole(ADMIN_ROLES),
+  ]);
   if (membership.role !== "owner") return <OperationalPayments schoolId={membership.schoolId} studentId={alumno} />;
+  if (connected) redirect("/admin/cuotas?connected=1#configuracion");
 
-  const school = await db.query.schools.findFirst({
-    where: eq(schools.id, membership.schoolId),
-  });
+  const period = isBillingPeriod(mes) ? mes : currentPeriod();
+  const start = new Date(`${period}-01T00:00:00`);
+  const end = addMonths(start, 1);
+  const previousPeriod = monthParam(addMonths(start, -1));
+  const nextPeriod = monthParam(end);
+  const tdb = tenantDb(membership.schoolId);
 
-  // Al volver del onboarding, consulta el estado real en Stripe.
-  let chargesEnabled = school?.stripeChargesEnabled ?? false;
-  if (connected && school?.stripeAccountId && !chargesEnabled) {
-    const status = await refreshConnectStatus(
-      membership.schoolId,
-      school.stripeAccountId
-    );
-    chargesEnabled = status.chargesEnabled;
-  }
-  const hasAccount = !!school?.stripeAccountId;
-
-  const [plans, categories, students, charges] = await Promise.all([
-    tdb.plans.findMany({
-      with: { category: true },
-      orderBy: [asc(plansTable.kind), asc(plansTable.name)],
+  const [categories, students, charges] = await Promise.all([
+    tdb.categories.findMany({
+      columns: { id: true, name: true },
+      orderBy: [asc(categoriesTable.name)],
     }),
-    tdb.categories.findMany({ orderBy: [asc(categoriesTable.name)] }),
     tdb.students.findMany({
       where: eq(studentsTable.status, "active"),
       orderBy: [asc(studentsTable.lastName), asc(studentsTable.firstName)],
       columns: { id: true, firstName: true, lastName: true },
     }),
     tdb.charges.findMany({
-      with: { student: true },
+      where: or(
+        eq(chargesTable.periodMonth, period),
+        and(
+          or(isNull(chargesTable.periodMonth), eq(chargesTable.periodMonth, "")),
+          gte(chargesTable.createdAt, start),
+          lt(chargesTable.createdAt, end),
+        ),
+      ),
+      columns: { id: true, kind: true, status: true, description: true, amountCents: true, currency: true, dueDate: true },
+      with: { student: { columns: { firstName: true, lastName: true } } },
       orderBy: [desc(chargesTable.createdAt)],
-      limit: 200,
     }),
   ]);
 
-  const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
-  const studentOptions = students.map((s) => ({
-    value: s.id,
-    label: `${s.firstName} ${s.lastName}`,
-  }));
-  const pending = charges.filter((c) => c.status === "pending");
-  const pendingSum = pending.reduce((s, c) => s + c.amountCents, 0);
+  const groups = new Map<GroupStatus, ListedCharge[]>();
+  for (const charge of charges) {
+    if (tipo && charge.kind !== tipo) continue;
+    const status = isOverdue(charge) ? "vencido" : charge.status;
+    if (estado && estado !== charge.status && estado !== status) continue;
+    const group = groups.get(status);
+    if (group) group.push(charge);
+    else groups.set(status, [charge]);
+  }
 
-  // Cargos filtrados por mes, estado (incluye "vencido") y tipo de cobro.
-  const filteredCharges = charges.filter((c) => {
-    if (estado === "vencido") {
-      if (!isOverdue(c)) return false;
-    } else if (estado && c.status !== estado) {
-      return false;
-    }
-    if (tipo && c.kind !== tipo) return false;
-    if (mes && effectiveMonth(c) !== mes) return false;
-    return true;
-  });
+  const filters = new URLSearchParams();
+  if (estado) filters.set("estado", estado);
+  if (tipo) filters.set("tipo", tipo);
+  function monthHref(value: string) {
+    const query = new URLSearchParams(filters);
+    query.set("mes", value);
+    return `/admin/pagos?${query}`;
+  }
 
   return (
     <div className="mx-auto w-full max-w-5xl">
       <PageHeader
-        eyebrow="Pagos"
         title="Pagos"
-        subtitle="Configura los planes para mensualidades y renovaciones automáticas y registra los pagos."
+        subtitle="Consulta cargos y registra pagos."
+        action={
+          <nav aria-label="Mes de cobro" className="inline-flex max-w-full items-stretch rounded-xl border border-outline-variant bg-surface-container text-pitch">
+            {isBillingPeriod(previousPeriod) && (
+              <Link href={monthHref(previousPeriod)} rel="prev" aria-label="Mes anterior" className="flex size-12 shrink-0 items-center justify-center rounded-s-xl border-e border-outline-variant hover:bg-primary-container">
+                <Chevron className="rotate-180" />
+              </Link>
+            )}
+            <PaymentMonthField key={period} period={period} label={periodLabel(period)} filters={filters.toString()} />
+            {isBillingPeriod(nextPeriod) && (
+              <Link href={monthHref(nextPeriod)} rel="next" aria-label="Mes siguiente" className="flex size-12 shrink-0 items-center justify-center rounded-e-xl border-s border-outline-variant hover:bg-primary-container">
+                <Chevron />
+              </Link>
+            )}
+          </nav>
+        }
       />
 
-      {/* Estado de cobros en línea con Stripe Connect */}
-      {chargesEnabled ? (
-        <div className="mb-6 rounded-2xl border border-pitch/30 bg-pitch/[0.06] p-4">
-          <p className="text-sm font-semibold text-ink">
-            Cobros en línea activos ✓
-          </p>
-          <p className="mt-1 text-sm text-ink-soft">
-            Los papás ya pueden pagar con tarjeta; el dinero llega directo a la
-            cuenta de tu escuela.
-          </p>
+      <div className="mb-5 grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="[&>div]:mb-0">
+          <FilterBar selects={[
+            {
+              key: "tipo",
+              label: "Filtrar por tipo de cargo",
+              allLabel: "Todos los tipos",
+              icon: "payments",
+              options: (Object.keys(KIND_LABELS) as ChargeKind[]).map((value) => ({ value, label: KIND_LABELS[value] })),
+            },
+            {
+              key: "estado",
+              label: "Filtrar por estado",
+              allLabel: "Todos los estados",
+              icon: "attendance",
+              options: [
+                { value: "pending", label: "Pendiente" },
+                { value: "vencido", label: "Vencido" },
+                { value: "paid", label: "Pagado" },
+                { value: "canceled", label: "Cancelado" },
+              ],
+            },
+          ]} />
         </div>
-      ) : (
-        <div className="mb-6 rounded-2xl border border-tangerine/30 bg-tangerine/[0.07] p-4">
-          <p className="text-sm font-semibold text-ink">Cobros en línea</p>
-          <p className="mt-1 mb-3 text-sm text-ink-soft">
-            {hasAccount
-              ? "Falta terminar de configurar tu cuenta de Stripe para empezar a cobrar con tarjeta."
-              : "Conecta tu cuenta de Stripe para que los papás paguen con tarjeta. Mientras tanto, puedes registrar pagos en efectivo abajo."}
-          </p>
-          <form action={connectStripe}>
-            <button
-              type="submit"
-              className="rounded-full bg-pitch px-4 py-2 text-sm font-semibold text-chalk transition hover:bg-pitch-deep"
-            >
-              {hasAccount ? "Terminar configuración" : "Conectar pagos"}
-            </button>
-          </form>
+        <div>
+          <CobroDialog
+            categories={categories.map(({ id, name }) => ({ value: id, label: name }))}
+            students={students.map(({ id, firstName, lastName }) => ({ value: id, label: `${firstName} ${lastName}` }))}
+          />
         </div>
-      )}
+      </div>
 
-      {/* Día de vencimiento de las cuotas */}
-      <form
-        action={setPaymentDueDay}
-        className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-ink/10 bg-white/70 px-4 py-3 text-sm"
-      >
-        <span className="text-ink-soft">Las cuotas vencen el día</span>
-        <input
-          type="number"
-          name="dueDay"
-          min={1}
-          max={28}
-          defaultValue={school?.paymentDueDay ?? ""}
-          placeholder="—"
-          className="w-16 rounded-lg border border-ink/15 bg-white px-2 py-1.5 text-center text-ink shadow-sm outline-none focus:border-pitch focus:ring-2 focus:ring-pitch/20"
+      {groups.size === 0 ? (
+        <EmptyState
+          icon={<PortalIcon icon="payments" />}
+          title={charges.length > 0 ? "No hay cargos con esos filtros" : "No hay cargos en este mes"}
+          description={charges.length > 0 ? "Prueba con otro tipo o estado." : "Las mensualidades aparecen a partir del día programado. También puedes consultar otro mes o crear un cobro único."}
         />
-        <span className="text-ink-soft">de cada mes.</span>
-        <button
-          type="submit"
-          className="rounded-full border border-ink/15 px-3 py-1.5 text-xs font-semibold text-ink-soft transition hover:text-ink"
-        >
-          Guardar
-        </button>
-        <span className="text-xs text-ink-soft/80">
-          (déjalo vacío para no usar vencimiento)
-        </span>
-      </form>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <Card>
-          <p className="mb-3 text-sm font-semibold text-ink">Nuevo plan</p>
-          <CreatePlanForm categories={categoryOptions} />
-        </Card>
-        <Card>
-          <p className="mb-3 text-sm font-semibold text-ink">Generar cuotas</p>
-          <p className="mb-3 text-xs text-ink-soft">
-            Las mensualidades se generan cada mes con el plan de la categoría o el plan general.
-            También puedes generarlas aquí.
-          </p>
-          <GenerateChargesForm currentPeriod={currentPeriod()} />
-        </Card>
-        <Card>
-          <p className="mb-3 text-sm font-semibold text-ink">Cobro único</p>
-          <p className="mb-3 text-xs text-ink-soft">
-            Inscripción, torneo o producto a un grupo de alumnos.
-          </p>
-          <CreateOneOffChargeForm
-            categories={categoryOptions}
-            students={studentOptions}
-          />
-        </Card>
-      </div>
-
-      {/* Planes */}
-      <h2 className="mt-8 font-display text-lg font-bold">Planes</h2>
-      {plans.length === 0 ? (
-        <p className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">
-          Aún no tienes planes. Crea uno arriba.
-        </p>
       ) : (
-        <ul className="mt-3 space-y-2">
-          {plans.map((p) => (
-            <li
-              key={p.id}
-              className="rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0 flex-[1_1_14rem]">
-                  <p className="font-semibold leading-snug text-ink">{p.name}</p>
-                  <span className="mt-1 inline-block rounded-full bg-chalk-deep px-2 py-0.5 text-xs font-medium text-ink-soft">
-                    {KIND_LABELS[p.kind as ChargeKind]}
-                  </span>
-                  <p className="mt-1 text-xs text-ink-soft">
-                    {formatMoney(p.amountCents, p.currency)}
-                    {p.category ? ` · ${p.category.name}` : " · toda la escuela"}
-                    {!p.active && " · inactivo"}
-                  </p>
-                </div>
-                <DeleteForm id={p.id} />
-              </div>
-              <details className="mt-2 max-w-md">
-                <summary className="cursor-pointer py-2 text-sm font-medium text-pitch">Modificar precio</summary>
-                <div className="mt-2"><CreatePlanForm categories={categoryOptions} plan={p} /></div>
-              </details>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {/* Cargos */}
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-lg font-bold">Cargos</h2>
-        {pending.length > 0 && (
-          <span className="text-sm text-ink-soft">
-            {pending.length} pendiente{pending.length === 1 ? "" : "s"} ·{" "}
-            {formatMoney(pendingSum)}
-          </span>
-        )}
-      </div>
-      {charges.length > 0 && (
-        <div className="mt-3">
-          <FilterBar
-            month={{ key: "mes" }}
-            selects={[
-              {
-                key: "estado",
-                allLabel: "Todos los estados",
-                options: [
-                  { value: "pending", label: "Pendiente" },
-                  { value: "vencido", label: "Vencido" },
-                  { value: "paid", label: "Pagado" },
-                  { value: "canceled", label: "Cancelado" },
-                ],
-              },
-              {
-                key: "tipo",
-                allLabel: "Todos los tipos",
-                options: (Object.keys(KIND_LABELS) as ChargeKind[]).map((k) => ({
-                  value: k,
-                  label: KIND_LABELS[k],
-                })),
-              },
-            ]}
-          />
+        <div className="space-y-4">
+          {(Object.keys(CHARGE_GROUPS) as GroupStatus[]).map((status) => {
+            const items = groups.get(status);
+            return items && <ChargeGroup key={`${period}-${status}`} status={status} charges={items} />;
+          })}
         </div>
-      )}
-      {charges.length === 0 ? (
-        <p className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">
-          No hay cargos todavía. Genera las cuotas del mes o crea un cobro único.
-        </p>
-      ) : filteredCharges.length === 0 ? (
-        <p className="mt-3 rounded-2xl border border-dashed border-ink/15 bg-white/60 p-6 text-center text-sm text-ink-soft">
-          No hay cargos con esos filtros.
-        </p>
-      ) : (
-        <ul className="mt-3 space-y-2">
-          {filteredCharges.map((c) => (
-            <li
-              key={c.id}
-              className="flex flex-col gap-3 rounded-xl border border-ink/10 bg-white/80 px-4 py-3 shadow-sm xl:flex-row xl:items-center xl:justify-between"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold leading-snug text-ink">
-                  {c.student.firstName} {c.student.lastName}
-                </p>
-                <p className="text-xs text-ink-soft">
-                  {c.description} · {formatMoney(c.amountCents, c.currency)}
-                  {c.periodMonth ? ` · ${periodLabel(c.periodMonth)}` : ""}
-                </p>
-              </div>
-              <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
-                <StatusBadge status={c.status} />
-                {c.status === "pending" && (
-                  <>
-                    <SmallForm action={markChargePaid} id={c.id} label="Marcar pagado" tone="pitch" />
-                    <SmallForm action={cancelCharge} id={c.id} label="Cancelar" tone="muted" />
-                  </>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
       )}
     </div>
+  );
+}
+
+function ChargeGroup({ status, charges }: { status: GroupStatus; charges: ListedCharge[] }) {
+  const { title, tone, dot, expanded } = CHARGE_GROUPS[status];
+  const totals = new Map<string, number>();
+  for (const charge of charges) {
+    totals.set(charge.currency, (totals.get(charge.currency) ?? 0) + charge.amountCents);
+  }
+
+  return (
+    <details open={expanded} className="group overflow-hidden rounded-2xl border border-outline-variant bg-surface">
+      <summary className={`flex min-h-14 cursor-pointer list-none items-center gap-2.5 px-4 py-3 focus-visible:-outline-offset-2 sm:gap-4 sm:px-5 ${tone}`}>
+        <span aria-hidden="true" className={`size-2.5 shrink-0 rounded-full ${dot}`} />
+        <span className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
+          <span className="block font-display text-xl font-bold leading-tight">{title}</span>
+          <span className="block text-sm text-ink-soft sm:border-s sm:border-outline-variant sm:ps-4">
+            {charges.length} {charges.length === 1 ? "cargo" : "cargos"} · {Array.from(totals, ([currency, cents]) => formatMoney(cents, currency)).join(" · ")}
+          </span>
+        </span>
+        <Chevron className="shrink-0 text-pitch group-open:rotate-90" />
+      </summary>
+      <ul className="divide-y divide-outline-variant border-t border-outline-variant">
+        {charges.map((charge) => (
+          <li key={charge.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(6rem,auto)_auto] xl:gap-x-5">
+            <span className="font-semibold">{charge.student.firstName} {charge.student.lastName}</span>
+            <span className="col-start-1 row-start-2 text-sm text-ink-soft xl:col-start-2 xl:row-start-1">
+              {charge.description}
+              {charge.status === "pending" && charge.dueDate && (
+                <span className="block text-xs">Vence el {formatDueDate(charge.dueDate)}</span>
+              )}
+            </span>
+            <div className="col-start-2 row-start-1 text-right text-base font-bold tabular-nums xl:col-start-3">
+              {formatMoney(charge.amountCents, charge.currency)}
+            </div>
+            {charge.status === "pending" && (
+              <div className="col-span-full flex flex-wrap justify-end gap-2 xl:col-span-1 xl:col-start-4 xl:row-start-1">
+                <ChargeAction action={cancelCharge} id={charge.id} label="Cancelar cargo" />
+                <ChargeAction action={markChargePaid} id={charge.id} label="Marcar pagado" primary />
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function Chevron({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ChargeAction({ action, id, label, primary = false }: {
+  action: (formData: FormData) => Promise<void>;
+  id: string;
+  label: string;
+  primary?: boolean;
+}) {
+  return (
+    <form action={action}>
+      <input type="hidden" name="id" value={id} />
+      <button type="submit" className={`md-button min-h-11 px-3 py-1.5 text-xs ${primary ? "md-tonal" : "md-outlined"}`}>
+        {label}
+      </button>
+    </form>
   );
 }
 
@@ -323,48 +265,6 @@ function StatusBadge({ status }: { status: string }) {
     >
       {CHARGE_STATUS_LABELS[status] ?? status}
     </span>
-  );
-}
-
-function DeleteForm({ id }: { id: string }) {
-  return (
-    <form action={deletePlan} className="shrink-0">
-      <input type="hidden" name="id" value={id} />
-      <button
-        type="submit"
-        className="rounded-full px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:bg-red-50 hover:text-red-600"
-      >
-        Eliminar
-      </button>
-    </form>
-  );
-}
-
-function SmallForm({
-  action,
-  id,
-  label,
-  tone,
-}: {
-  action: (formData: FormData) => void;
-  id: string;
-  label: string;
-  tone: "pitch" | "muted";
-}) {
-  const cls =
-    tone === "pitch"
-      ? "bg-pitch text-chalk hover:bg-pitch-deep"
-      : "border border-ink/15 text-ink-soft hover:text-ink";
-  return (
-    <form action={action}>
-      <input type="hidden" name="id" value={id} />
-      <button
-        type="submit"
-        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${cls}`}
-      >
-        {label}
-      </button>
-    </form>
   );
 }
 

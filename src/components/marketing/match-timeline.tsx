@@ -2,7 +2,7 @@
 
 import type { PlayerRef } from "@remotion/player";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { EntranceGroup } from "./entrance-group";
 import { framesPerStep, MatchScene, matchStepAtFrame, matchSteps, settledFrame } from "./match-scene";
@@ -10,14 +10,45 @@ import styles from "./match-timeline.module.css";
 import layout from "./recorrido.module.css";
 
 const MatchTimelinePlayer = dynamic(() => import("./match-timeline-player"), { ssr: false });
+const wideViewport = "(min-width: 800px)";
+
+function subscribeToViewport(onChange: () => void) {
+  const query = window.matchMedia(wideViewport);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+}
+
+function loadPlayerImmediately() {
+  return window.matchMedia(wideViewport).matches || typeof IntersectionObserver === "undefined";
+}
+
+function deferBrowserPlayer() {
+  return false;
+}
 
 export function MatchTimeline() {
+  const eager = useSyncExternalStore(subscribeToViewport, loadPlayerImmediately, deferBrowserPlayer);
+  const [nearStage, setNearStage] = useState(false);
   const [player, setPlayer] = useState<PlayerRef | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [ended, setEnded] = useState(false);
   const stage = useRef<HTMLDivElement>(null);
   const autoplayHandled = useRef(false);
+
+  useEffect(() => {
+    const element = stage.current;
+    if (eager || nearStage || player || !element || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      setNearStage(true);
+      observer.disconnect();
+    }, { rootMargin: "420px 0px" });
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [eager, nearStage, player]);
 
   useEffect(() => {
     if (!player) return;
@@ -149,7 +180,9 @@ export function MatchTimeline() {
 
           <div ref={stage} className={styles.stage} aria-hidden="true" inert>
             {!player && <MatchScene step={activeStep} />}
-            <MatchTimelinePlayer initialFrame={activeStep * framesPerStep + settledFrame} onReady={setPlayer} />
+            {(eager || nearStage || player) && (
+              <MatchTimelinePlayer initialFrame={activeStep * framesPerStep + settledFrame} onReady={setPlayer} />
+            )}
           </div>
 
           <div className={styles.controls}>

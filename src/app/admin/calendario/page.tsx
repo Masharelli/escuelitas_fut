@@ -16,7 +16,7 @@ import {
   toDayKey,
   formatTime,
 } from "@/lib/calendar";
-import { PageHeader } from "@/components/ui";
+import { AddButtonLabel, PageHeader, PrimaryLink } from "@/components/ui";
 import { MonthCalendar, type CalEvent, type DayCell } from "./month-calendar";
 
 export default async function CalendarioPage({
@@ -97,6 +97,11 @@ export default async function CalendarioPage({
         eyebrow="Calendario"
         title="Calendario"
         subtitle="Entrenamientos, eventos y partidos. Toca un día para ver su detalle."
+        action={
+          <PrimaryLink href="/admin/asistencias#programar-entrenamiento">
+            <AddButtonLabel>Programar entrenamiento</AddButtonLabel>
+          </PrimaryLink>
+        }
       />
 
       <div className="mb-4 flex items-center justify-between gap-3">

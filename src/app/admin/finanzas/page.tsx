@@ -259,8 +259,8 @@ export default async function FinanzasPage({
         <FilterBar
           month={{ key: "mes" }}
           selects={[
-            { key: "estado", allLabel: "Todos los estados", options: STATUS_OPTIONS },
-            { key: "tipo", allLabel: "Todos los tipos", options: KIND_OPTIONS },
+            { key: "estado", label: "Filtrar por estado", allLabel: "Todos los estados", icon: "attendance", options: STATUS_OPTIONS },
+            { key: "tipo", label: "Filtrar por tipo de cargo", allLabel: "Todos los tipos", icon: "payments", options: KIND_OPTIONS },
           ]}
         />
       </div>
