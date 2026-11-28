@@ -115,6 +115,10 @@
 }
 
 .featureGrid {
+  --card-surface: rgb(255 255 255 / 88%);
+  --card-highlight: linear-gradient(155deg, #e3f1dc, #f1f7ed);
+  --card-highlight-border: #abc7a7;
+  --card-highlight-icon: #bdff6c;
   display: grid;
   gap: 14px;
   min-width: 0;
@@ -130,14 +134,14 @@
   padding: clamp(20px, 3vw, 34px);
   border: 1px solid var(--board-rule);
   border-radius: 22px;
-  background: rgb(255 255 255 / 88%);
+  background: var(--card-surface);
   box-shadow: 0 8px 24px rgb(21 53 35 / 5%);
   text-align: center;
 }
 
 .featureCard[data-featured] {
-  border-color: #abc7a7;
-  background: linear-gradient(155deg, #e3f1dc, #f1f7ed);
+  border-color: var(--card-highlight-border);
+  background: var(--card-highlight);
 }
 
 .featureCard h4 {
@@ -163,7 +167,29 @@
 
 .featureCard[data-featured] .featureIcon {
   color: var(--color-on-primary-container);
-  background: #bdff6c;
+  background: var(--card-highlight-icon);
+}
+
+@media (hover: hover) {
+  .featureGrid:has(> .featureCard:hover) > .featureCard[data-featured]:not(:hover) {
+    border-color: var(--board-rule);
+    background: var(--card-surface);
+  }
+
+  .featureGrid:has(> .featureCard:hover) > .featureCard[data-featured]:not(:hover) .featureIcon {
+    color: var(--color-pitch);
+    background: var(--color-surface-container);
+  }
+
+  .featureCard:hover {
+    border-color: var(--card-highlight-border);
+    background: var(--card-highlight);
+  }
+
+  .featureCard:hover .featureIcon {
+    color: var(--color-on-primary-container);
+    background: var(--card-highlight-icon);
+  }
 }
 
 .featureCard p {

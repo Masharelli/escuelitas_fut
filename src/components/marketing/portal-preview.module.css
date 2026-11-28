@@ -55,3 +55,62 @@
 .child small { display: block; font-size: 3cqw; color: #b3cdb7; }
 .child .tag { font-size: 3cqw; padding: 1cqw 3cqw; margin-top: 3cqw; }
 .mobileNav { display: flex; justify-content: space-between; font-size: 3cqw; margin-top: 5cqw; color: #c5ff7b; }
+
+.admin {
+  --preview-pine: #0a3027;
+  --preview-ink: #17251d;
+  --preview-copy: #4b5b50;
+  --preview-accent: #216142;
+  --preview-border: #dce9da;
+  --preview-mint: #e3f2de;
+  background: #fcfdfb;
+}
+
+.admin .sidebar { background: var(--preview-pine); }
+
+.admin .menu .selected {
+  color: #f4fff5;
+  background: #1d5e43;
+  box-shadow: none;
+}
+
+.admin .selected svg { color: #bdff6c; }
+
+.admin .content {
+  color: var(--preview-ink);
+  background: #fcfdfb;
+}
+
+.admin .greeting {
+  border-color: var(--preview-border);
+  color: var(--preview-pine);
+  background: linear-gradient(115deg, #edf5e9, var(--preview-mint));
+}
+
+.admin .greeting > small,
+.admin .titleRow small,
+.admin .studentList small,
+.admin .filters span { color: var(--preview-copy); }
+
+.admin .metrics > div,
+.admin .studentList > div,
+.admin .filters span {
+  border-color: var(--preview-border);
+  background: white;
+}
+
+.admin .metrics svg,
+.admin .metrics > div > span:last-child,
+.admin .edit { color: var(--preview-accent); }
+
+.admin .quick span {
+  border-color: var(--preview-border);
+  color: var(--preview-pine);
+  background: #edf5e9;
+}
+
+.admin .avatar,
+.admin .tag {
+  color: var(--preview-pine);
+  background: var(--preview-mint);
+}

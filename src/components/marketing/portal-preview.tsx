@@ -14,8 +14,10 @@ const students = [
 
 /** Decorative design preview. The enclosing control opens the real product capture. */
 export function PortalPreview({ kind }: { kind: PreviewKind }) {
+  const isAdmin = kind === "panel" || kind === "students";
+
   return (
-    <div className={`${styles.preview} ${kind === "family" ? styles.portrait : ""}`} aria-hidden="true">
+    <div className={`${styles.preview} ${isAdmin ? styles.admin : ""} ${kind === "family" ? styles.portrait : ""}`} aria-hidden="true">
       <div className={styles.window}>
         {kind !== "family" && <div className={styles.sidebar}>
           <div className={styles.brand}><span>◉</span> Escuelitas Fut <span className={styles.bell}>♧</span></div>
